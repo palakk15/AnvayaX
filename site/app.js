@@ -2,6 +2,7 @@ import { additiveForward, spatialForward, scenarioRows, mixtureFromFixedSources 
 import { futureTargetTimes, formatIST, modelWindow } from './live_view.js';
 import {readJSON, weatherLabels, weatherHelp, weatherDescription, downloadForecast} from './weather.js';
 import {setupChat} from './chat.js';
+import {setupPlatform,openPlatform,platformViews,renderPlatformOverview} from './platform.js';
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -20,7 +21,7 @@ let labReady = false;
 let routeSerial = 0;
 
 async function nav(view) {
-  const allowed = ['overview','public','lab','evidence','atlas'];
+  const allowed = ['overview','public','lab','evidence','atlas',...platformViews];
   const name = allowed.includes(view) ? view : 'overview';
   window.anvayaContext={view:name};
   const serial = ++routeSerial;
@@ -28,6 +29,7 @@ async function nav(view) {
   document.querySelectorAll('#nav a').forEach(link => { link.classList.toggle('active', link.dataset.view === name); if (link.dataset.view === name) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
   window.scrollTo({top:0,behavior:'auto'});
   try {
+    if (platformViews.includes(name)) await openPlatform(name);
     if (name === 'public') await loadPublic();
     if (name === 'lab') {
       setStatus('lab-message','Loading trained research examples…');
@@ -218,13 +220,20 @@ function renderEvidence() {
   const metrics=({proper_score:'Distribution score',mae:'Mean absolute error',rmse:'Root mean square error'});
   $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Lowest displayed score',num(best,3),'Within this generated benchmark')}</div><article class="card"><span class="eyebrow">COMMON CASE SET</span><h2>${esc(metrics[metric])}</h2><p>All methods below use the same held-out cases. Lower is better; this ranking is specific to the selected generated test and metric.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. <button class="model-link" data-method="${esc(id)}">${esc(methodName(id))}</button></strong><b>${num(item[metric],3)}</b><meter aria-label="${esc(title(id))} score" min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><span class="eyebrow">READ THE SCORES</span><h2>Different metrics answer different questions</h2><p>The distribution score assesses a forecast distribution. MAE and RMSE measure point-summary errors. A method can lead one measure and trail another.</p></article><article class="card"><span class="eyebrow">TRACEABLE SPLITS</span><h2>See how cases were separated</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. These generated cases do not replace real Indian station and rain-gauge verification.</p></article></div>`;
 }
-function modelFamily(item) { return item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':'hybrid'; }
+function modelFamily(item) { return item.ensemble?'ensemble':item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':item.model_class==='statistical'?'statistical':'hybrid'; }
+function atlasMetadata(item) {
+  const live=['gfs','ifs_control','aifs_single'].includes(item.id),ensemble=item.id==='gefs';
+  const documented={gfs:['0.11 degrees (about 13 km) surface fields; delivery grids vary','16 days','Every 6 hours','https://open-meteo.com/en/docs/gfs-api'],ifs_control:['0.25-degree open-data delivery (about 25 km); distinct from 9 km HRES','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],aifs_single:['0.25-degree delivery (about 28 km)','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],gefs:['0.25 / 0.5-degree seamless ensemble; 31 members','10 days at 0.25 degrees, 35 days at 0.5 degrees','Every 6 hours','https://open-meteo.com/en/docs/ensemble-api']}[item.id];
+  const fields=[['Resolution',item.grid||'Not verified for this integration'],['Forecast range',live?'96-hour window fetched here; native range varies':ensemble?'48-hour window fetched for guidance':'Not verified for this integration'],['Update frequency','Provider dependent; see primary documentation'],['Variables',Object.entries(item.capabilities||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')||'Not documented'],['Coverage',live||ensemble?'Global provider grid; India interface':item.use_context?.region||'See model documentation'],['Data access',live?'Open-Meteo named forecast API':ensemble?'Open-Meteo ensemble API':item.access||'Candidate; no active feed'],['Licence',item.data_license||'Verify with provider before ingestion']];
+  if(documented){fields[0][1]=documented[0];fields[1][1]=`${documented[1]}; this app fetches ${ensemble?48:96} hours`;fields[2][1]=documented[2];}
+  return `<details class="atlas-metadata"><summary>Dataset & operational metadata</summary><dl>${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${documented?`<a href="${documented[3]}" target="_blank" rel="noopener noreferrer">Provider specifications · reviewed 28 Sep 2026</a>`:''}</details>`;
+}
 function renderAtlas() {
   if (!catalogue) return;
   const query=$('model-search').value.trim().toLowerCase(),family=$('model-family').value,variable=$('model-variable').value;
   const filtered=catalogue.models.filter(item=>(family==='all'||modelFamily(item)===family)&&(variable==='all'||item.capabilities?.[variable]===true)&&(!query||[item.name,item.provider,item.description,...Object.values(item.use_context||{})].join(' ').toLowerCase().includes(query)));
   $('model-count').textContent=`${filtered.length} / ${catalogue.models.length} profiles`;
-  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p><div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
+  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p>${atlasMetadata(item)}<div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
   $('model-grid').querySelectorAll('[data-model]').forEach(button=>button.addEventListener('click',()=>openModel(button.dataset.model)));
 }
 async function openModel(id) {
@@ -283,13 +292,13 @@ function renderOverview(data) {
 }
 async function loadHero() {
   try {
-    const data=await readJSON(await fetch('/api/public-forecast?city=Mumbai',{signal:AbortSignal.timeout(35000)}));
-    const row=data.rows.find(r=>r.model==='gfs_global'&&Date.parse(r.valid_time)>Date.now()&&Number.isFinite(r.temperature_2m))||data.rows.find(r=>Date.parse(r.valid_time)>Date.now()&&Number.isFinite(r.temperature_2m));
-    if(!row)throw Error('No forecast available');
-    $('hero-live').innerHTML=`<span class="live-dot">● LIVE MODEL SNAPSHOT · MUMBAI</span><strong>${num(row.temperature_2m)}°C <span>· ${esc(data.models[row.model].name)}</span></strong><small>Forecast valid ${esc(formatIST(row.valid_time))} · retrieved ${esc(formatIST(data.retrieved_at))}</small>`;
-    liveCache.set('city:Mumbai',{data,at:Date.now()});
+    const data=await readJSON(await fetch('/api/intelligence?city=Mumbai',{signal:AbortSignal.timeout(35000)}));
+    if(!data.series.length)throw Error('No forecast available');
+    $('hero-live').innerHTML=`<span class="live-dot">REAL MODEL BLEND · MUMBAI</span><strong>${num(data.summary.temperature)}°C <span>· experimental blend</span></strong><small>Valid ${esc(formatIST(data.summary.valid_time))} · retrieved ${esc(formatIST(data.retrieved_at))}</small>`;
+    renderPlatformOverview(data);
   }catch{$('hero-live').innerHTML='<span class="live-dot">INDIA · CONNECTED FORECASTS</span><strong>Weather worth understanding.</strong><small>Live snapshot unavailable. Open the forecast desk to retry.</small>';}
 }
+
 function renderPublic(data) {
   const variable = $('public-variable').value, horizon = Number($('public-horizon').value);
   $('variable-help').textContent=weatherHelp[variable];
@@ -358,6 +367,7 @@ function renderPublic(data) {
 }
 
 async function start() {
+  setupPlatform(()=>liveSelection);
   setupChat();loadHero();
   document.addEventListener('click',async event=>{const profile=event.target.closest('[data-profile]');if(profile){event.preventDefault();try{await openModel(profile.dataset.profile);}catch{$('model-detail').textContent='The model profile could not be loaded.';$('model-dialog').showModal();}}const method=event.target.closest('[data-method]');if(method)openMethod(method.dataset.method);});
   $('refresh-forecast').addEventListener('click',()=>loadPublic(true));
@@ -381,7 +391,8 @@ async function start() {
     document.querySelectorAll('[data-lab-tab]').forEach(tab=>tab.setAttribute('aria-pressed',String(tab===button)));
   }));
   ['evidence-variable','evidence-metric'].forEach(id=>$(id).addEventListener('change',renderEvidence));
-  ['model-search','model-family','model-variable'].forEach(id=>$(id).addEventListener('input',renderAtlas));
+  $('model-search').addEventListener('input',renderAtlas);
+  ['model-family','model-variable'].forEach(id=>$(id).addEventListener('change',renderAtlas));
   ['public-variable','public-horizon'].forEach(id=>$(id).addEventListener('change',()=>{
     if(id==='public-variable')$('public-threshold').value='';
     const cached=liveCache.get(liveSelection.key);

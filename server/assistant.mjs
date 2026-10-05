@@ -2,6 +2,9 @@ import { readFile } from 'node:fs/promises';
 import { fetchJSON, ServiceError } from './http.mjs';
 import { searchLocations, resolveLocation } from './locations.mjs';
 import { getForecast } from './forecast.mjs';
+import { analyzeForecast } from './intelligence.mjs';
+import { skillReport } from './skill-store.mjs';
+import { getEnsemble } from './ensemble.mjs';
 
 let cataloguePromise;
 const catalogue = () => cataloguePromise ||= readFile(new URL('../site/data/catalogue.json',import.meta.url),'utf8').then(JSON.parse);
@@ -11,11 +14,14 @@ export function groqKey() {
 }
 const tool = (name, description, properties, required=[]) => ({type:'function',function:{name,description,parameters:{type:'object',properties,required,additionalProperties:false}}});
 const tools = [
+  tool('historical_skill','Calculate held-out model and blend metrics. Real mode may have no observations; research mode is explicitly synthetic, never real India skill.',{mode:{type:'string',enum:['real','research']},variable:{type:'string',enum:['temperature','rainfall','wind_uv']},state:{type:'string'},district:{type:'string'},lead_hours:{type:'number'},recent:{type:'number',enum:[7,30,90]}},['mode','variable']),
+  tool('extreme_guidance','Retrieve real NOAA GEFS raw ensemble event frequencies, not calibrated probabilities or official warnings.',{place_id:{type:'integer'},latitude:{type:'number'},longitude:{type:'number'}}),
   tool('search_india','Find Indian towns or six-digit PINs. Show alternatives if ambiguous; postal coordinates may be district approximations.',{query:{type:'string'}},['query']),
   tool('get_forecast','Fetch fresh source forecasts and a 7-day overview for a place ID from search, or user-provided coordinates. Compare multiple places by calling for each.',{place_id:{type:'integer'},latitude:{type:'number'},longitude:{type:'number'}}),
   tool('model_knowledge','Search the complete model atlas: capabilities, limitations, suitability and primary sources. Empty query lists all models.',{query:{type:'string'}},['query']),
 ];
 function summarizeForecast(data) {
+  const intelligence=analyzeForecast(data);
   const start=Date.now();
   const models=Object.entries(data.models).map(([id,meta])=>{
     const rows=data.rows.filter(r=>r.model===id && Date.parse(r.valid_time)>start).slice(0,24);
@@ -23,9 +29,19 @@ function summarizeForecast(data) {
     const t=values('temperature_2m'), rain=values('precipitation'), wind=values('wind_speed_10m');
     return {name:meta.name,hours:rows.length,temperature_range_c:t.length?[Math.min(...t),Math.max(...t)]:null,rainfall_sum_mm:rain.length?rain.reduce((a,b)=>a+b,0):null,rainfall_available_hours:rain.length,max_wind_ms:wind.length?Math.max(...wind):null,hourly:rows.map(({valid_time,temperature_2m,precipitation,wind_speed_10m})=>({valid_time,temperature_2m,precipitation,wind_speed_10m}))};
   });
-  return {city:data.city,coordinates:data.requested_coordinates,retrieved_at:data.retrieved_at,source_status:data.source_status,models,overview:data.overview,sources:data.sources,notes:data.notes};
+  return {city:data.city,coordinates:data.requested_coordinates,retrieved_at:data.retrieved_at,source_status:data.source_status,models,overview:data.overview,sources:data.sources,notes:data.notes,experimental_blend:intelligence.summary,weights:intelligence.series[0]?.temperature.weights,regime:intelligence.regime,blend_explanation:intelligence.explanation};
 }
 export async function executeTool(name, args) {
+  if(name==='historical_skill'){
+    if(!['real','research'].includes(args.mode)||!['temperature','rainfall','wind_uv'].includes(args.variable))throw new ServiceError('Choose real or research evidence and a supported variable.',400);
+    const p=new URLSearchParams();for(const k of ['mode','variable','state','district','lead_hours','recent'])if(args[k]!==undefined)p.set(k,String(args[k]));
+    const r=await skillReport(p);return {evidence_label:r.evidence_label,source:r.source,n:r.n,metrics:r.metrics.map(({reliability,...m})=>m),improvement_percent:r.improvement_percent,improvement_note:r.improvement_note,recent:r.recent,folds:r.folds};
+  }
+  if(name==='extreme_guidance'){
+    const p=new URLSearchParams();for(const k of ['place_id','latitude','longitude'])if(args[k]!==undefined)p.set(k,String(args[k]));
+    if(!p.has('place_id')&&!(p.has('latitude')&&p.has('longitude')))throw new ServiceError('Resolve a place or provide coordinates first.',400);
+    const r=await getEnsemble(await resolveLocation(p));return {...r,events:r.events.map(({members,...event})=>event),sources:[{model:r.provider,source_url:r.documentation_url}]};
+  }
   if (name==='search_india') return searchLocations(args.query);
   if (name==='get_forecast') {
     const params=new URLSearchParams();
@@ -65,7 +81,7 @@ export async function answerChat(input, { complete } = {}) {
       calls++; let result;
       try { result=await executeTool(call.function.name,JSON.parse(call.function.arguments)); }
       catch(error) { result={error:error instanceof ServiceError?error.message:'This lookup could not be completed.'}; }
-      steps.push({tool:call.function.name,status:result.error?'unavailable':'complete',summary:result.error || (call.function.name==='get_forecast'?`Retrieved ${result.city} at ${result.retrieved_at}`:call.function.name==='search_india'?`Found ${result.locations.length} places`:`Searched ${result.total_models} model profiles`)});
+      steps.push({tool:call.function.name,status:result.error?'unavailable':'complete',summary:result.error || (call.function.name==='get_forecast'?`Retrieved ${result.city} at ${result.retrieved_at}`:call.function.name==='search_india'?`Found ${result.locations.length} places`:call.function.name==='historical_skill'?`Evaluated ${result.n} ${result.evidence_label} pairs`:call.function.name==='extreme_guidance'?'Retrieved raw ensemble event guidance':`Searched ${result.total_models} model profiles`)});
       for(const source of result.sources||[]) if(source.source_url) sources.set(source.source_url,{label:source.model,url:source.source_url});
       for(const model of result.matches||[]) for(const url of model.evidence_urls||[]) if(/^https:\/\//.test(url))sources.set(url,{label:model.name,url});
       messages.push({role:'tool',tool_call_id:call.id,content:JSON.stringify(result)});

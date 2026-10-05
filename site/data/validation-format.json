@@ -1,0 +1,8 @@
+{
+  "notice": "SCHEMA EXAMPLE ONLY. These numbers are synthetic; do not import as real measurements.",
+  "files": ["forecasts.jsonl", "observations.jsonl", "provenance.json"],
+  "forecast_example": {"location_id":"example","latitude":20,"longitude":74,"region":"example","variable":"temperature","units":"degC","valid_start":"2025-01-02T00:00:00Z","valid_end":"2025-01-02T00:00:00Z","data_kind":"synthetic","source_id":"example_model","model_version":"example-v1","initialization_time":"2025-01-01T00:00:00Z","available_at":"2025-01-01T03:00:00Z","forecast_kind":"operational","value":[25]},
+  "observation_example": {"location_id":"example","latitude":20,"longitude":74,"region":"example","variable":"temperature","units":"degC","valid_start":"2025-01-02T00:00:00Z","valid_end":"2025-01-02T00:00:00Z","data_kind":"synthetic","observation_id":"example-001","available_at":"2025-01-02T01:00:00Z","quality":"good","value":24},
+  "provenance_example": {"forecasts_source_uri":"urn:example:synthetic","observations_source_uri":"urn:example:synthetic","observation_kind":"synthetic","observation_dataset":"Example only","locations":{"example":{"state":"Maharashtra","district":"Nashik"}}},
+  "requirements": ["UTC timestamps with explicit timezone", "Exact target windows and units", "Rainfall needs a positive accumulation interval", "Wind uses eastward/northward [u,v] in m/s; forecast members are [[u,v],...]", "Actual availability must precede operational issuance", "Real archives require provenance and a measurement observation dataset", "Do not substitute latest forecasts or stitched reanalysis for issue-preserving forecast verification"]
+}

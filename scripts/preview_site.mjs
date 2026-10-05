@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { GET } from '../api/public-forecast.mjs';
 import { GET as searchLocations } from '../api/locations.mjs';
 import { GET as chatStatus, POST as chat } from '../api/chat.mjs';
+import { GET as intelligence } from '../api/intelligence.mjs';
 
 // Node's env loader preserves variables already set by the deployment environment.
 for (const file of ['.env.local', '.env']) {
@@ -16,7 +17,7 @@ const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=
 const port = Number(process.env.PORT || 4173);
 const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
-  const routes = { '/api/public-forecast':{GET}, '/api/locations':{GET:searchLocations}, '/api/chat':{GET:chatStatus,POST:chat} };
+  const routes = { '/api/public-forecast':{GET}, '/api/locations':{GET:searchLocations}, '/api/intelligence':{GET:intelligence}, '/api/chat':{GET:chatStatus,POST:chat} };
   if (url.pathname.startsWith('/api/')) {
     try {
       const handler=routes[url.pathname]?.[req.method];

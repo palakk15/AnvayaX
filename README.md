@@ -6,6 +6,8 @@ The sole presentation and technical guide is [ppt.md](ppt.md). It covers the pro
 
 ## Frontend
 
+The validation-driven dashboard upgrade is documented in [PLATFORM.md](PLATFORM.md), including scientific definitions, implementation limits, real-data import, database design, and Vercel key setup.
+
 ```powershell
 npm run build
 npm run dev

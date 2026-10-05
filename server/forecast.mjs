@@ -8,6 +8,15 @@ export const models = Object.freeze({
 const fields = Object.freeze({ precipitation: 'mm', temperature_2m: '°C', wind_speed_10m: 'm/s', wind_direction_10m: '°' });
 const endpoint = 'https://api.open-meteo.com/v1/forecast';
 
+// Adapter contract: new providers implement these three methods, returning normalized rows.
+export class OpenMeteoAdapter {
+  constructor(id){if(!models[id])throw Error('Unknown model');this.id=id;}
+  getMetadata(){return {id:this.id,...models[this.id],provider:'Open-Meteo',endpoint,license:'CC BY 4.0',run_initialization_available:false};}
+  fetchForecast(location){return sourceForecast(location,this.id);}
+  getAvailability(result){return {model:this.id,available:result.status==='fulfilled',message:result.status==='fulfilled'?'Available':result.reason?.message||'Unavailable'};}
+}
+export const modelAdapters=Object.keys(models).map(id=>new OpenMeteoAdapter(id));
+
 async function sourceForecast(location, model) {
   const url = new URL(endpoint);
   Object.entries({latitude:location.latitude, longitude:location.longitude, hourly:Object.keys(fields).join(','), models:model, forecast_hours:96, timezone:'UTC', wind_speed_unit:'ms'}).forEach(([k,v])=>url.searchParams.set(k,String(v)));
@@ -32,7 +41,7 @@ export async function getForecast(location) {
   const key=`forecast:${location.latitude.toFixed(4)}:${location.longitude.toFixed(4)}`;
   const forecast=await cached(key,15*60*1000,async()=>{
     const ids=Object.keys(models);
-    const results=await Promise.allSettled([...ids.map(id=>sourceForecast(location,id)),dailyForecast(location)]);
+    const results=await Promise.allSettled([...modelAdapters.map(adapter=>adapter.fetchForecast(location)),dailyForecast(location)]);
     const available=results.slice(0,ids.length).flatMap(r=>r.status==='fulfilled'?[r.value]:[]);
     if (!available.length) throw new ServiceError('The forecast sources are unavailable right now. Please retry in a few minutes.');
     const retrieved_at=new Date().toISOString();
