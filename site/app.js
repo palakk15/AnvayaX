@@ -1,8 +1,9 @@
+import {renderLiveAnalytics,networkInspector} from './analytics.js';
 import { additiveForward, spatialForward, scenarioRows, mixtureFromFixedSources } from './gate.js';
 import { futureTargetTimes, formatIST, modelWindow } from './live_view.js';
 import {readJSON, weatherLabels, weatherHelp, weatherDescription, downloadForecast} from './weather.js';
 import {setupChat} from './chat.js';
-import {setupPlatform,openPlatform,platformViews,renderPlatformOverview} from './platform.js';
+import {setupPlatform,openPlatform,platformViews} from './platform.js';
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -159,12 +160,12 @@ function renderSensitivity(spec, rows, mask, neural) {
 }
 function renderNetwork(spec, neural, mask) {
   const coords=[80,280,490,700,910];
-  const labels=['4 nearby sites','169 basis features','32 hidden channels','4 attention heads','source weights'];
+  const labels=['4 nearby sites',`${spec.spatial.state['project.weight'][0].length} basis features`,'32 hidden channels','4 attention heads','source weights'];
   const circles=coords.map((x,i)=>`<g><rect x="${x-72}" y="85" width="145" height="125" rx="15" fill="${i===4?'#e9fff8':'#f0efff'}" stroke="${i===4?'#60cdb6':'#afa5f4'}"/><text x="${x}" y="125" text-anchor="middle" font-size="13" font-weight="800" fill="#3c3c75">${labels[i]}</text><text x="${x}" y="154" text-anchor="middle" font-size="11" fill="#687590">${['spatial context','centered splines','learned projection','self-attention + FFN','masked softmax'][i]}</text></g>`).join('');
   const edges=coords.slice(0,-1).map((x,i)=>`<path d="M${x+73} 148 L${coords[i+1]-73} 148" stroke="#8a78e8" stroke-width="3" marker-end="url(#arrow)"/>`).join('');
   const output=spec.sources.map((id,i)=>`${sourceName(id)} ${pct(neural.weights[i])}`).join(' · ');
   $('network-svg').innerHTML=`<defs><marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto"><path d="M0 0 L8 4 L0 8" fill="#8a78e8"/></marker></defs>${edges}${circles}<text x="520" y="250" text-anchor="middle" font-size="12" fill="#65758c">${esc(output)}</text>`;
-  $('network-method').innerHTML=`<strong>Network calculation:</strong> exported PyTorch checkpoint, one encoder layer, four heads and ${spec.sources.length} source logits. The same edited context feeds both views. ${mask.filter(Boolean).length} source${mask.filter(Boolean).length===1?' is':'s are'} eligible. This neural path is a research challenger; the additive route is the saved accuracy champion.`;
+  $('network-method').innerHTML=networkInspector(spec,neural)+`<strong>Network calculation:</strong> exported PyTorch checkpoint, one encoder layer, four heads and ${spec.sources.length} source logits. The same edited context feeds both views. ${mask.filter(Boolean).length} source${mask.filter(Boolean).length===1?' is':'s are'} eligible. This neural path is a research challenger; the additive route is the saved accuracy champion.`;
 }
 function renderMap(spec) {
   const id=$('map-source').value || spec.sources[0];
@@ -224,7 +225,7 @@ function modelFamily(item) { return item.ensemble?'ensemble':item.model_class===
 function atlasMetadata(item) {
   const live=['gfs','ifs_control','aifs_single'].includes(item.id),ensemble=item.id==='gefs';
   const documented={gfs:['0.11 degrees (about 13 km) surface fields; delivery grids vary','16 days','Every 6 hours','https://open-meteo.com/en/docs/gfs-api'],ifs_control:['0.25-degree open-data delivery (about 25 km); distinct from 9 km HRES','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],aifs_single:['0.25-degree delivery (about 28 km)','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],gefs:['0.25 / 0.5-degree seamless ensemble; 31 members','10 days at 0.25 degrees, 35 days at 0.5 degrees','Every 6 hours','https://open-meteo.com/en/docs/ensemble-api']}[item.id];
-  const fields=[['Resolution',item.grid||'Not verified for this integration'],['Forecast range',live?'96-hour window fetched here; native range varies':ensemble?'48-hour window fetched for guidance':'Not verified for this integration'],['Update frequency','Provider dependent; see primary documentation'],['Variables',Object.entries(item.capabilities||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')||'Not documented'],['Coverage',live||ensemble?'Global provider grid; India interface':item.use_context?.region||'See model documentation'],['Data access',live?'Open-Meteo named forecast API':ensemble?'Open-Meteo ensemble API':item.access||'Candidate; no active feed'],['Licence',item.data_license||'Verify with provider before ingestion']];
+  const fields=[['Resolution',item.grid||'Not verified for this integration'],['Forecast range',live?'96-hour window fetched here; native range varies':ensemble?'48-hour window fetched for guidance':'Not verified for this integration'],['Update frequency','Provider dependent; see primary documentation'],['Variables',Object.entries(item.capabilities||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')||'Not documented'],['Coverage',live||ensemble?'Global provider grid; India interface':item.use_context?.region||'See model documentation'],['Data access',live?'Named forecast API':ensemble?'Ensemble API':item.access||'Candidate; no active feed'],['Licence',item.data_license||'Verify with provider before ingestion']];
   if(documented){fields[0][1]=documented[0];fields[1][1]=`${documented[1]}; this app fetches ${ensemble?48:96} hours`;fields[2][1]=documented[2];}
   return `<details class="atlas-metadata"><summary>Dataset & operational metadata</summary><dl>${fields.map(([k,v])=>`<dt>${esc(k)}</dt><dd>${esc(v)}</dd>`).join('')}</dl>${documented?`<a href="${documented[3]}" target="_blank" rel="noopener noreferrer">Provider specifications · reviewed 28 Sep 2026</a>`:''}</details>`;
 }
@@ -288,15 +289,10 @@ function renderOverview(data) {
   if(!overview){$('current-overview').innerHTML='<div class="forecast-empty">The daily overview is temporarily unavailable. Named hourly forecasts are available below.</div>';return;}
   const c=overview.current,d=overview.daily;
   const value=(v,u)=>Number.isFinite(v)?`${num(v)}${u}`:'—';
-  $('current-overview').innerHTML=`<article class="card current-weather"><span class="eyebrow">CURRENT MODEL ESTIMATE</span><h2>${esc(weatherDescription(c.weather_code))}</h2><div class="current-temp">${value(c.temperature_2m,'°')}</div><div class="current-meta"><span>Feels like ${value(c.apparent_temperature,'°C')}</span><span>Humidity ${value(c.relative_humidity_2m,'%')}</span><span>Wind ${value(c.wind_speed_10m,' m/s')}</span></div><p>Valid ${esc(formatIST(`${c.time}+05:30`))} · Open-Meteo automatic model selection. Model estimate, not a station reading.</p></article><article class="card"><span class="eyebrow">THE WEEK AHEAD · IST</span><h2>Seven days at a glance</h2><div class="daily-strip">${d.time.map((day,i)=>`<div class="day-card"><span>${i===0?'Today':new Intl.DateTimeFormat('en-IN',{weekday:'short',timeZone:'Asia/Kolkata'}).format(new Date(day+'T12:00:00+05:30'))}<br>${esc(day.slice(5))}</span><strong>${value(d.temperature_2m_max?.[i],'°')} <small>/ ${value(d.temperature_2m_min?.[i],'°')}</small></strong><span class="rain-value">${value(d.precipitation_sum?.[i],' mm')}</span><small>${value(d.precipitation_probability_max?.[i],'%')} rain chance</small></div>`).join('')}</div><p class="daily-note">Daily high / low, rain total and maximum hourly precipitation probability from the provider's automatic model selection. Separate from the named model comparison below.</p></article>`;
+  $('current-overview').innerHTML=`<article class="card current-weather"><span class="eyebrow">CURRENT MODEL ESTIMATE</span><h2>${esc(weatherDescription(c.weather_code))}</h2><div class="current-temp">${value(c.temperature_2m,'°')}</div><div class="current-meta"><span>Feels like ${value(c.apparent_temperature,'°C')}</span><span>Humidity ${value(c.relative_humidity_2m,'%')}</span><span>Wind ${value(c.wind_speed_10m,' m/s')}</span></div><p>Valid ${esc(formatIST(`${c.time}+05:30`))} · automatic model selection. Model estimate, not a station reading.</p></article><article class="card"><span class="eyebrow">THE WEEK AHEAD · IST</span><h2>Seven days at a glance</h2><div class="daily-strip">${d.time.map((day,i)=>`<div class="day-card"><span>${i===0?'Today':new Intl.DateTimeFormat('en-IN',{weekday:'short',timeZone:'Asia/Kolkata'}).format(new Date(day+'T12:00:00+05:30'))}<br>${esc(day.slice(5))}</span><strong>${value(d.temperature_2m_max?.[i],'°')} <small>/ ${value(d.temperature_2m_min?.[i],'°')}</small></strong><span class="rain-value">${value(d.precipitation_sum?.[i],' mm')}</span><small>${value(d.precipitation_probability_max?.[i],'%')} rain chance</small></div>`).join('')}</div><p class="daily-note">Daily high / low, rain total and maximum hourly precipitation probability from the provider's automatic model selection. Separate from the named model comparison below.</p></article>`;
 }
-async function loadHero() {
-  try {
-    const data=await readJSON(await fetch('/api/intelligence?city=Mumbai',{signal:AbortSignal.timeout(35000)}));
-    if(!data.series.length)throw Error('No forecast available');
-    $('hero-live').innerHTML=`<span class="live-dot">REAL MODEL BLEND · MUMBAI</span><strong>${num(data.summary.temperature)}°C <span>· experimental blend</span></strong><small>Valid ${esc(formatIST(data.summary.valid_time))} · retrieved ${esc(formatIST(data.retrieved_at))}</small>`;
-    renderPlatformOverview(data);
-  }catch{$('hero-live').innerHTML='<span class="live-dot">INDIA · CONNECTED FORECASTS</span><strong>Weather worth understanding.</strong><small>Live snapshot unavailable. Open the forecast desk to retry.</small>';}
+function loadHero() {
+  $('hero-live').innerHTML='<span class="live-dot">WEATHER INTELLIGENCE · INDIA</span><strong>Many models. One clearer picture.</strong><small>Physical forecasts, AI models and inspectable blending for any selected location.</small>';
 }
 
 function renderPublic(data) {
@@ -320,7 +316,7 @@ function renderPublic(data) {
   const thresholdText = $('public-threshold').value.trim();
   const threshold = thresholdText !== '' && Number.isFinite(Number(thresholdText)) ? Number(thresholdText) : null;
   $('public-content').hidden = false;
-  setStatus('public-message',`${Date.parse(data.expires_at)<Date.now()?'Saved data — refresh overdue. ':''}${data.attribution}`);
+  setStatus('public-message',`${Date.parse(data.expires_at)<Date.now()?'Saved data — refresh overdue. ':''}Source attribution and documentation are available below.`);
   $('public-stats').innerHTML = stat('Selected place',data.city,data.requested_location?.state || 'India')
     + stat('Future target hours',times.length,`${formatIST(times[0])} onward`)
     + stat('Model value range',`${num(min)}–${num(max)} ${unit}`,'Across the displayed source forecasts')
@@ -345,6 +341,7 @@ function renderPublic(data) {
   const thresholdLine = threshold !== null && threshold >= min && threshold <= max
     ? `<line x1="${left}" x2="${right}" y1="${bottom-(threshold-min)/range*(bottom-top)}" y2="${bottom-(threshold-min)/range*(bottom-top)}" stroke="#ad6947" stroke-width="2" stroke-dasharray="6 5"/><text x="${right}" y="${bottom-(threshold-min)/range*(bottom-top)-5}" text-anchor="end" font-size="10" fill="#ad6947">Your threshold ${num(threshold,1)} ${esc(unit)}</text>` : '';
   $('public-chart').innerHTML = guides + xTicks + thresholdLine + paths + windows.map((window,j)=>window.points.map((point,i)=>Number.isFinite(point.value)?`<circle cx="${left+i*(right-left)/Math.max(times.length-1,1)}" cy="${bottom-(point.value-min)/range*(bottom-top)}" r="6" fill="transparent"><title>${esc(data.models[ids[j]].name)} · ${esc(formatIST(point.time))}: ${num(point.value,1)} ${esc(unit)}</title></circle>`:'').join('')).join('');
+  renderLiveAnalytics(data,windows,times,unit);
   $('public-chart-caption').textContent = `${formatIST(times[0])} to ${formatIST(times.at(-1))} · ${unit} · separate source forecasts, not a blend`;
   $('public-model-cards').innerHTML = ids.map((id,i)=>{
     const window=windows[i];
@@ -357,7 +354,7 @@ function renderPublic(data) {
   $('public-table').querySelector('thead').innerHTML = `<tr><th>${variable==='precipitation'?'Hour ending (IST)':'Valid time (IST)'}</th>${ids.map(id=>`<th>${esc(data.models[id].name)} (${esc(unit)})</th>`).join('')}</tr>`;
   $('public-table').querySelector('tbody').innerHTML = times.map((time,i)=>`<tr><td>${esc(formatIST(time))}</td>${windows.map(window=>`<td>${window.points[i].value===null?'—':num(window.points[i].value,1)}</td>`).join('')}</tr>`).join('');
   const receipt = [
-    ['Provider','Open-Meteo'],['Requested place',[data.city,data.requested_location?.state].filter(Boolean).join(', ')],
+    ['Provider','See data attribution in footer'],['Requested place',[data.city,data.requested_location?.state].filter(Boolean).join(', ')],
     ['Retrieved',formatIST(data.retrieved_at)],['First target',formatIST(times[0])],['Last target',formatIST(times.at(-1))],
     ['Requested coordinates',`${num(data.requested_coordinates.latitude,4)}, ${num(data.requested_coordinates.longitude,4)}`],
     ['Provider grid',`${num(data.returned_coordinates.latitude,4)}, ${num(data.returned_coordinates.longitude,4)}`],

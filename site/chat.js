@@ -1,6 +1,6 @@
 import {readJSON} from './weather.js';
 const $=id=>document.getElementById(id);
-let messages=[],busy=false;
+let messages=[],busy=false,sessionKey='';
 function bubble(role,text) {
   const element=document.createElement('div');element.className=`chat-message ${role}`;
   const label=document.createElement('strong');label.textContent=role==='user'?'You':'Anvaya';
@@ -18,7 +18,8 @@ async function send(event) {
   const pending=bubble('assistant','Checking the evidence…');pending.classList.add('pending');
   $('chat-state').textContent='Looking up sources…';
   try {
-    const data=await readJSON(await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:messages.slice(-11),context:window.anvayaContext||{view:location.hash}}),signal:AbortSignal.timeout(120000)}));
+    const recent=[];let size=0;for(const message of messages.slice(-11).reverse()){if(size+message.content.length>17000)break;recent.unshift(message);size+=message.content.length;}
+    const data=await readJSON(await fetch('/api/chat',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({messages:recent,apiKey:sessionKey||undefined,context:window.anvayaContext||{view:location.hash}}),signal:AbortSignal.timeout(120000)}));
     pending.querySelector('p').textContent=data.answer;pending.classList.remove('pending');messages.push({role:'assistant',content:data.answer});
     if(data.steps?.length){const details=document.createElement('details');const summary=document.createElement('summary');summary.textContent=`Evidence trail · ${data.steps.length} lookups`;details.append(summary);for(const step of data.steps){const p=document.createElement('p');p.textContent=`${step.status==='complete'?'✓':'!'} ${step.summary}`;details.append(p);}pending.append(details);}
     if(data.sources?.length){const links=document.createElement('div');links.className='chat-sources';for(const source of data.sources.slice(0,6)){if(!/^https:\/\//.test(source.url))continue;const a=document.createElement('a');a.href=source.url;a.target='_blank';a.rel='noopener noreferrer';a.textContent=source.label;links.append(a);}pending.append(links);}
@@ -27,6 +28,9 @@ async function send(event) {
   finally{busy=false;$('chat-send').disabled=false;pending.scrollIntoView({block:'nearest'});$('chat-input').focus();}
 }
 export function setupChat() {
+  $('chat-settings').addEventListener('click',()=>{$('chat-setup').hidden=!$('chat-setup').hidden;});
+  $('chat-key-form').addEventListener('submit',event=>{event.preventDefault();const key=$('chat-api-key').value.trim();if(!/^gsk_[A-Za-z0-9_-]{20,240}$/.test(key)){$('chat-key-status').textContent='Enter a Groq key beginning with gsk_.';return;}sessionKey=key;$('chat-api-key').value='';$('chat-key-status').textContent='Key ready for this tab. Send a message to verify it.';$('chat-state').textContent='Session key ready';});
+  $('chat-key-remove').addEventListener('click',()=>{sessionKey='';$('chat-api-key').value='';$('chat-key-status').textContent='Session key removed. Server configuration will be used if available.';});
   $('chat-launcher').addEventListener('click',()=>{if($('chat-panel').hidden)openChat();else{$('chat-panel').hidden=true;$('chat-launcher').setAttribute('aria-expanded','false');}});
   const close=()=>{$('chat-panel').hidden=true;$('chat-launcher').setAttribute('aria-expanded','false');$('chat-launcher').focus();};
   $('chat-close').addEventListener('click',close);

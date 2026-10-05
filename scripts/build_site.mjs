@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const site = resolve(root, 'site');
-const required = ['index.html', 'app.js', 'gate.js', 'live_view.js', 'weather.js', 'chat.js', 'style.css', 'enhancements.css', 'platform.js', 'platform.css', 'data/india.geojson', 'data/validation-format.json', 'data/demo.json', 'data/gate.json', 'data/catalogue.json', 'data/benchmark.json'];
+const required = ['index.html', 'app.js', 'analytics.js', 'gate.js', 'live_view.js', 'weather.js', 'chat.js', 'style.css', 'enhancements.css', 'platform.js', 'platform.css', 'data/india.geojson', 'data/validation-format.json', 'data/demo.json', 'data/gate.json', 'data/catalogue.json', 'data/benchmark.json'];
 await Promise.all(required.map(name => access(resolve(site, name))));
 await access(resolve(root,'server/data/research-validation.json'));
 const html = await readFile(resolve(site, 'index.html'), 'utf8');
