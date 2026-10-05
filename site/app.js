@@ -1,5 +1,7 @@
 import { additiveForward, spatialForward, scenarioRows, mixtureFromFixedSources } from './gate.js';
 import { futureTargetTimes, formatIST, modelWindow } from './live_view.js';
+import {readJSON, weatherLabels, weatherHelp, weatherDescription, downloadForecast} from './weather.js';
+import {setupChat} from './chat.js';
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -7,7 +9,9 @@ const pct = value => `${(100 * value).toFixed(value < .001 ? 4 : 1)}%`;
 const num = (value, places = 1) => Number(value).toLocaleString('en-IN', {maximumFractionDigits:places});
 const title = value => String(value).replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
 const sourceName = id => ({gfs:'NOAA GFS',gefs:'NOAA GEFS',graphcast_operational:'GraphCast',ifs:'ECMWF IFS',aifs:'ECMWF AIFS'}[id] || title(id));
-const colors = ['#1c897c','#c4874b','#547bb3','#b86c52','#6e8f95'];
+const colors = ['#087f8c','#b66a18','#635bce','#bf5670','#417f4b'];
+const profileId=id=>({ifs:'ifs_control',aifs:'aifs_single',gfs_global:'gfs',ecmwf_ifs025:'ifs_control',ecmwf_aifs025_single:'aifs_single'}[id]||id);
+const profileLink=(id,label)=>`<a href="#atlas" class="model-link" data-profile="${esc(profileId(id))}">${esc(label||sourceName(id))}</a>`;
 let demo, gate, catalogue, benchmark, currentCase, labTab = 'weights';
 let liveSelection = { key: 'city:Mumbai', parameter: 'city=Mumbai', label: 'Mumbai, Maharashtra' };
 const liveCache = new Map();
@@ -18,6 +22,7 @@ let routeSerial = 0;
 async function nav(view) {
   const allowed = ['overview','public','lab','evidence','atlas'];
   const name = allowed.includes(view) ? view : 'overview';
+  window.anvayaContext={view:name};
   const serial = ++routeSerial;
   for (const item of allowed) $(`view-${item}`).hidden = item !== name;
   document.querySelectorAll('#nav a').forEach(link => { link.classList.toggle('active', link.dataset.view === name); if (link.dataset.view === name) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
@@ -114,7 +119,7 @@ function weightRows(spec, result, mask, additive=null) {
   return spec.sources.map((id,i)=>{
     const top=additive ? relevantTerms(additive,i,mask).slice(0,2) : [];
     const reason=!mask[i]?'Unavailable in this scenario, so its share is fixed at zero.':additive ? (top.length ? `Main score drivers versus the current mix: ${top.map(term=>`${featureLabel(term.key)} ${term.value>=0?'+':'−'}${num(Math.abs(term.value),2)}`).join('; ')}.`:'The learned source prior dominates this score.') : 'The network combines this site with three nearby contexts, then applies the availability mask.';
-    return `<div class="weight-item"><div class="weight-top"><strong><span style="color:${colors[i%colors.length]}">●</span> ${esc(sourceName(id))}</strong><b>${pct(result.weights[i])}</b></div><div class="weight-track"><div class="weight-fill" style="width:${Math.max(0,Math.min(100,result.weights[i]*100))}%;background:${colors[i%colors.length]}"></div></div><p>${esc(reason)}</p></div>`;
+    return `<div class="weight-item"><div class="weight-top"><strong><span style="color:${colors[i%colors.length]}">●</span> ${profileLink(id)}</strong><b>${profileLink(id,pct(result.weights[i]))}</b></div><div class="weight-track"><div class="weight-fill" style="width:${Math.max(0,Math.min(100,result.weights[i]*100))}%;background:${colors[i%colors.length]}"></div></div><p>${esc(reason)}</p></div>`;
   }).join('');
 }
 function renderEvents(events, sources) {
@@ -176,6 +181,7 @@ function renderLab() {
     const spec=gate.variables[currentCase.variable], values=formValues(spec), rows=scenarioRows(currentCase,values,spec.sources),mask=spec.sources.map(id=>values.sources[id].available);
     const additive=additiveForward(spec,rows[0],mask),neural=spatialForward(spec,rows,mask);
     const mixture=mixtureFromFixedSources(currentCase,spec.sources,additive.weights);
+    window.anvayaContext={view:'research blend',scope:'Synthetic generated case, not live weather',site:currentCase.location_id,variable:currentCase.variable,weights:spec.sources.map((id,i)=>({source:id,weight:additive.weights[i],eligible:mask[i]})),lead_hours:values.lead};
     const units=currentCase.base.summary.units;
     $('lab-stats').innerHTML=stat(currentCase.variable==='wind_uv'?'Vector mean speed':'Blended mean',`${num(mixture.mean,2)} ${units}`,'Using fixed calibrated source distributions')+stat('Eligible sources',`${mask.filter(Boolean).length} / ${mask.length}`,'Unavailable sources receive zero weight')+stat('Leading source',sourceName(spec.sources[additive.weights.indexOf(Math.max(...additive.weights))]),'Highest additive mixture share')+stat('Lead time',`${values.lead} h`,'Scenario target from model initialization');
     $('weight-bars').innerHTML=weightRows(spec,additive,mask,additive);
@@ -190,13 +196,27 @@ function renderLab() {
   } catch(error) { setStatus('lab-message',error.message,true); }
 }
 
+const methodDescriptions={
+  emos_adapted:['EMOS calibration','Fits a predictive distribution to ensemble output. The adapted implementation uses generated training cases to correct bias and dispersion. A lower score here is not a measured skill claim for India.'],
+  bma_fixed_components:['Bayesian model averaging','Combines fixed calibrated component distributions with fitted mixture weights. These weights do not mean the probability that a source is correct.'],
+  calibrated_equal:['Equal calibrated mixture','Gives the available calibrated sources equal shares. This is a simple reference against which adaptive weighting should be tested.'],
+  inverse_skill:['Inverse-error weighting','Uses past evaluation error to set source shares. Performance depends on the training sample and whether that skill persists.'],
+  xgboost_distributional_stack:['XGBoost distributional stack','A trained tree-based stacking method that combines source information into a predictive distribution on the generated benchmark.'],
+  static:['Fixed learned weights','Fits one source-weight vector on the training data, without adapting it to the local forecast context.'],
+  interpretable:['Explainable additive router','Adds learned context effects to each source score, applies an availability mask, then uses softmax to produce shares adding to 100%. Open Explain the blend for exact score contributions.'],
+  spatial:['Spatial transformer','Uses the selected site and three neighbouring contexts to infer source scores through a trained attention network. Sensitivity tests explain output changes; attention alone is not a causal explanation.'],
+  raw_equal_mixture:['Equal raw mixture','Combines uncalibrated source distributions with equal weights. It helps assess the value of calibration and adaptive routing.']
+};
+function methodName(id){if(methodDescriptions[id])return methodDescriptions[id][0];const [kind,source]=id.split(':');return `${({calibrated:'Calibrated',raw_members:'Raw ensemble',raw_mean:'Raw mean'})[kind]||title(kind)} · ${sourceName(source||id)}`;}
+function openMethod(id){const source=id.split(':')[1],entry=methodDescriptions[id];$('model-detail').innerHTML=`<span class="eyebrow">BENCHMARK METHOD · GENERATED RESEARCH DATA</span><h1>${esc(methodName(id))}</h1><p class="method-description">${esc(entry?.[1]||`${id.startsWith('calibrated')?'Calibrated forecast distribution':id.startsWith('raw_members')?'Uncalibrated ensemble members':'Uncalibrated point mean'} for this source, evaluated on the same held-out generated cases.`)}</p>${source?`<p>Source model: ${profileLink(source)}. Open its profile for architecture, uses, limitations and primary references.</p>`:''}<p class="fineprint">Benchmark scores measure errors, not model weights. Lower scores are better only within the displayed test. The training examples are synthetic, and these results do not validate an operational Indian forecast.</p><a class="model-link" href="#lab" id="method-lab-link">Explore weights and exact calculations →</a>`;$('model-dialog').showModal();$('method-lab-link').addEventListener('click',()=>$('model-dialog').close());}
+
 function renderEvidence() {
   if (!benchmark) return;
   const variable=$('evidence-variable').value,metric=$('evidence-metric').value;
   const data=benchmark.variables[variable], methods=Object.entries(data.methods).filter(([,record])=>Number.isFinite(record[metric])).sort((a,b)=>a[1][metric]-b[1][metric]);
   const best=methods[0]?.[1][metric]||1,max=methods.at(-1)?.[1][metric]||1;
   const metrics=({proper_score:'Distribution score',mae:'Mean absolute error',rmse:'Root mean square error'});
-  $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Lowest displayed score',num(best,3),'Within this generated benchmark')}</div><article class="card"><span class="eyebrow">COMMON CASE SET</span><h2>${esc(metrics[metric])}</h2><p>All methods below use the same held-out cases. Lower is better; this ranking is specific to the selected generated test and metric.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. ${esc(title(id))}</strong><b>${num(item[metric],3)}</b><meter aria-label="${esc(title(id))} score" min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><span class="eyebrow">READ THE SCORES</span><h2>Different metrics answer different questions</h2><p>The distribution score assesses a forecast distribution. MAE and RMSE measure point-summary errors. A method can lead one measure and trail another.</p></article><article class="card"><span class="eyebrow">TRACEABLE SPLITS</span><h2>See how cases were separated</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. These generated cases do not replace real Indian station and rain-gauge verification.</p></article></div>`;
+  $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Lowest displayed score',num(best,3),'Within this generated benchmark')}</div><article class="card"><span class="eyebrow">COMMON CASE SET</span><h2>${esc(metrics[metric])}</h2><p>All methods below use the same held-out cases. Lower is better; this ranking is specific to the selected generated test and metric.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. <button class="model-link" data-method="${esc(id)}">${esc(methodName(id))}</button></strong><b>${num(item[metric],3)}</b><meter aria-label="${esc(title(id))} score" min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><span class="eyebrow">READ THE SCORES</span><h2>Different metrics answer different questions</h2><p>The distribution score assesses a forecast distribution. MAE and RMSE measure point-summary errors. A method can lead one measure and trail another.</p></article><article class="card"><span class="eyebrow">TRACEABLE SPLITS</span><h2>See how cases were separated</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. These generated cases do not replace real Indian station and rain-gauge verification.</p></article></div>`;
 }
 function modelFamily(item) { return item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':'hybrid'; }
 function renderAtlas() {
@@ -207,59 +227,77 @@ function renderAtlas() {
   $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p><div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
   $('model-grid').querySelectorAll('[data-model]').forEach(button=>button.addEventListener('click',()=>openModel(button.dataset.model)));
 }
-function openModel(id) {
+async function openModel(id) {
+  catalogue ||= await loadResearch('catalogue');
   const item=catalogue.models.find(model=>model.id===id);if(!item)return;
+  window.anvayaContext={view:'model profile',model_id:id,model_name:item.name};
   const context=item.use_context||{};
   const links=(item.evidence_urls||[]).filter(url=>/^https:\/\//.test(url)).slice(0,5);
   const participation=['gfs','ifs_control','aifs_single'].includes(id)?'A raw provider series is shown in the live desk. This model has not been fitted into a real-data Anvaya X blend.':'This is a documented candidate. It is not fetched by the live desk or assigned an operational blend weight.';
   $('model-detail').innerHTML=`<span class="eyebrow">MODEL ANALYSIS · ${esc(item.provider||'Research')}</span><h1>${esc(item.name)}</h1><p>${esc(item.description||item.purpose)}</p><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.architecture||'Architecture documented in source')}</span></div><div class="detail-box" style="margin-top:18px"><strong>Actual participation in Anvaya X</strong>${esc(participation)}</div><h2 style="margin-top:25px">When should it be considered?</h2><div class="detail-grid">${[['Region',context.region],['Season',context.season],['Lead time',context.lead],['Weather situation',context.weather]].map(([label,text])=>`<div class="detail-box"><strong>${label}</strong>${esc(text||'Requires local validation.')}</div>`).join('')}</div><h2 style="margin-top:25px">Deeper analysis</h2><p>${esc(context.analysis||item.purpose)}</p><div class="detail-grid"><div class="detail-box"><strong>Strengths</strong><ul class="detail-list">${(item.pros||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div><div class="detail-box"><strong>Limits and conditions</strong><ul class="detail-list">${(item.cons||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div></div><p class="fineprint">${esc(item.assessment_basis||'Suitability profile, not a measured local skill ranking.')}</p>${links.length?`<h3>Primary references</h3><ul class="detail-list">${links.map((url,i)=>`<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Provider / author source ${i+1} ↗</a></li>`).join('')}</ul>`:''}`;
-  $('model-dialog').showModal();
+  if(!$('model-dialog').open)$('model-dialog').showModal();
 }
 
+let forecastSerial=0, forecastController;
 function setLiveSelection(selection) {
-  liveSelection = selection;
-  $('public-selected').textContent = `Selected: ${selection.label}`;
-  $('public-search').value = '';
-  $('location-results').hidden = true;
-  $('public-search').setAttribute('aria-expanded','false');
-  loadPublic();
+  liveSelection=selection; ++locationSearchSerial;
+  $('public-selected').textContent=`Selected: ${selection.label}`;
+  $('selection-note').textContent=selection.note||'';
+  $('public-search').value='';$('location-results').hidden=true;$('public-search').setAttribute('aria-expanded','false');
+  $('public-content').hidden=true;$('download-forecast').disabled=true;loadPublic();
 }
-let locationSearchTimer, locationSearchSerial = 0;
+let locationSearchTimer, locationSearchSerial=0;
 async function searchPlaces() {
-  const query = $('public-search').value.trim();
-  const serial = ++locationSearchSerial;
-  const list = $('location-results');
-  if (query.length < 2) { list.hidden = true; $('public-search').setAttribute('aria-expanded','false'); return; }
-  list.hidden = false; $('public-search').setAttribute('aria-expanded','true');
-  list.innerHTML = '<div class="location-empty">Searching Indian places…</div>';
+  const query=$('public-search').value.trim(), serial=++locationSearchSerial, list=$('location-results');
+  if(query.length<2){list.hidden=true;$('public-search').setAttribute('aria-expanded','false');return;}
+  list.hidden=false;$('public-search').setAttribute('aria-expanded','true');list.innerHTML='<div class="location-empty">Searching Indian places…</div>';
   try {
-    const response = await fetch(`/api/locations?q=${encodeURIComponent(query)}`);
-    const data = await response.json();
-    if (serial !== locationSearchSerial) return;
-    if (!response.ok) throw Error(data.error || 'Search unavailable');
-    list.innerHTML = data.locations.length ? data.locations.map(place => `<button class="location-result" role="option" type="button" data-place-id="${place.id}" data-place-label="${esc([place.name,place.district,place.state].filter(Boolean).join(', '))}"><strong>${esc(place.name)}</strong><small>${esc([place.district,place.state].filter(Boolean).join(', '))} · ${num(place.latitude,2)}°, ${num(place.longitude,2)}°</small></button>`).join('') : '<div class="location-empty">No matching Indian place found. Try a fuller name or PIN code.</div>';
-    list.querySelectorAll('[data-place-id]').forEach(button=>button.addEventListener('click',()=>setLiveSelection({key:`place:${button.dataset.placeId}`,parameter:`place_id=${encodeURIComponent(button.dataset.placeId)}`,label:button.dataset.placeLabel})));
-  } catch(error) { if (serial === locationSearchSerial) list.innerHTML=`<div class="location-empty">${esc(error.message)}. Try again shortly.</div>`; }
+    const data=await readJSON(await fetch(`/api/locations?q=${encodeURIComponent(query)}`,{signal:AbortSignal.timeout(35000)}));
+    if(serial!==locationSearchSerial)return;
+    list.innerHTML=(data.message?`<div class="location-empty">${esc(data.message)}</div>`:'')+(data.locations.length?data.locations.map((place,i)=>`<button class="location-result" role="option" type="button" data-place-id="${i}"><strong>${esc(place.name)}${place.pincode?` · PIN ${esc(place.pincode)}`:''}</strong><small>${esc([place.district,place.state].filter(Boolean).join(', '))} · ${num(place.latitude,3)}°, ${num(place.longitude,3)}°${place.precision==='district approximation'?' · Approximate district centre':''}</small></button>`).join(''):'<div class="location-empty">No match found. Try a district name, or use your location / coordinates.</div>');
+    list.querySelectorAll('[data-place-id]').forEach(button=>button.addEventListener('click',()=>{const place=data.locations[Number(button.dataset.placeId)];setLiveSelection({key:`place:${place.id}`,parameter:`place_id=${place.id}`,label:[place.name,place.state,place.pincode?`PIN ${place.pincode}`:''].filter(Boolean).join(', '),note:place.note,place_id:place.id});}));
+  }catch(error){if(serial===locationSearchSerial)list.innerHTML=`<div class="location-empty">${esc(error.message)}</div>`;}
 }
-async function loadPublic() {
-  const selection = liveSelection;
-  const cached = liveCache.get(selection.key);
-  if (cached && Date.now() - cached.at < 600000) { renderPublic(cached.data); return; }
-  setStatus('public-message',`Retrieving current source forecasts for ${selection.label}…`);
+async function loadPublic(force=false) {
+  const selection=liveSelection, serial=++forecastSerial, cached=liveCache.get(selection.key);
+  if(!force && cached && Date.parse(cached.data.expires_at)>Date.now()){forecastController?.abort();$('refresh-forecast').disabled=false;renderPublic(cached.data);return;}
+  forecastController?.abort();forecastController=new AbortController();
+  setStatus('public-message',`Retrieving source forecasts for ${selection.label}…`);$('refresh-forecast').disabled=true;
   try {
-    const response = await fetch(`/api/public-forecast?${selection.parameter}`);
-    const data = await response.json();
-    if (!response.ok || data.data_kind !== 'real' || !Array.isArray(data.rows)) throw Error(data.error || 'Provider response could not be read');
-    liveCache.set(selection.key,{data,at:Date.now()});
-    if (selection.key === liveSelection.key) renderPublic(data);
-  } catch(error) {
-    if (selection.key !== liveSelection.key) return;
-    $('public-content').hidden = true;
-    setStatus('public-message',`Live source forecasts unavailable: ${error.message}. Try another place or retry shortly.`,true);
-  }
+    const data=await readJSON(await fetch(`/api/public-forecast?${selection.parameter}`,{signal:AbortSignal.any([forecastController.signal,AbortSignal.timeout(40000)])}));
+    if(data.data_kind!=='real'||!Array.isArray(data.rows))throw Error('The forecast service did not return valid data.');
+    liveCache.set(selection.key,{data,at:Date.now()});if(liveCache.size>20)liveCache.delete(liveCache.keys().next().value);
+    if(serial===forecastSerial)renderPublic(data);
+  }catch(error){
+    if(serial!==forecastSerial||error.name==='AbortError')return;
+    if(cached){renderPublic(cached.data);setStatus('public-message',`Refresh failed. Showing saved data retrieved ${formatIST(cached.data.retrieved_at)}. ${error.message}`,true);}
+    else{$('public-content').hidden=true;setStatus('public-message',error.message,true);}
+  }finally{if(serial===forecastSerial)$('refresh-forecast').disabled=false;}
+}
+function renderOverview(data) {
+  const overview=data.overview;
+  if(!overview){$('current-overview').innerHTML='<div class="forecast-empty">The daily overview is temporarily unavailable. Named hourly forecasts are available below.</div>';return;}
+  const c=overview.current,d=overview.daily;
+  const value=(v,u)=>Number.isFinite(v)?`${num(v)}${u}`:'—';
+  $('current-overview').innerHTML=`<article class="card current-weather"><span class="eyebrow">CURRENT MODEL ESTIMATE</span><h2>${esc(weatherDescription(c.weather_code))}</h2><div class="current-temp">${value(c.temperature_2m,'°')}</div><div class="current-meta"><span>Feels like ${value(c.apparent_temperature,'°C')}</span><span>Humidity ${value(c.relative_humidity_2m,'%')}</span><span>Wind ${value(c.wind_speed_10m,' m/s')}</span></div><p>Valid ${esc(formatIST(`${c.time}+05:30`))} · Open-Meteo automatic model selection. Model estimate, not a station reading.</p></article><article class="card"><span class="eyebrow">THE WEEK AHEAD · IST</span><h2>Seven days at a glance</h2><div class="daily-strip">${d.time.map((day,i)=>`<div class="day-card"><span>${i===0?'Today':new Intl.DateTimeFormat('en-IN',{weekday:'short',timeZone:'Asia/Kolkata'}).format(new Date(day+'T12:00:00+05:30'))}<br>${esc(day.slice(5))}</span><strong>${value(d.temperature_2m_max?.[i],'°')} <small>/ ${value(d.temperature_2m_min?.[i],'°')}</small></strong><span class="rain-value">${value(d.precipitation_sum?.[i],' mm')}</span><small>${value(d.precipitation_probability_max?.[i],'%')} rain chance</small></div>`).join('')}</div><p class="daily-note">Daily high / low, rain total and maximum hourly precipitation probability from the provider's automatic model selection. Separate from the named model comparison below.</p></article>`;
+}
+async function loadHero() {
+  try {
+    const data=await readJSON(await fetch('/api/public-forecast?city=Mumbai',{signal:AbortSignal.timeout(35000)}));
+    const row=data.rows.find(r=>r.model==='gfs_global'&&Date.parse(r.valid_time)>Date.now()&&Number.isFinite(r.temperature_2m))||data.rows.find(r=>Date.parse(r.valid_time)>Date.now()&&Number.isFinite(r.temperature_2m));
+    if(!row)throw Error('No forecast available');
+    $('hero-live').innerHTML=`<span class="live-dot">● LIVE MODEL SNAPSHOT · MUMBAI</span><strong>${num(row.temperature_2m)}°C <span>· ${esc(data.models[row.model].name)}</span></strong><small>Forecast valid ${esc(formatIST(row.valid_time))} · retrieved ${esc(formatIST(data.retrieved_at))}</small>`;
+    liveCache.set('city:Mumbai',{data,at:Date.now()});
+  }catch{$('hero-live').innerHTML='<span class="live-dot">INDIA · CONNECTED FORECASTS</span><strong>Weather worth understanding.</strong><small>Live snapshot unavailable. Open the forecast desk to retry.</small>';}
 }
 function renderPublic(data) {
   const variable = $('public-variable').value, horizon = Number($('public-horizon').value);
+  $('variable-help').textContent=weatherHelp[variable];
+  renderOverview(data);
+  $('download-forecast').disabled=false;
+  $('refresh-status').textContent=`Auto-refresh: 15 min · retrieved ${formatIST(data.retrieved_at)}`;
+  $('source-health').innerHTML=(data.source_status||[]).map(source=>`<span class="source-badge ${source.available?'':'unavailable'}">${source.available?'●':'○'} ${esc(source.name)} · ${source.available?'available':'temporarily unavailable'}</span>`).join('');
+  window.anvayaContext={view:'live forecasts',selection:liveSelection.label,parameters:liveSelection.parameter,coordinates:data.requested_coordinates,location_note:liveSelection.note||'',variable,horizon};
   const ids = Object.keys(data.models), times = futureTargetTimes(data.rows,Date.now(),horizon);
   const windows = ids.map(id=>modelWindow(data.rows,id,variable,times));
   const all = windows.flatMap(window=>window.points.map(point=>point.value)).filter(Number.isFinite);
@@ -273,12 +311,12 @@ function renderPublic(data) {
   const thresholdText = $('public-threshold').value.trim();
   const threshold = thresholdText !== '' && Number.isFinite(Number(thresholdText)) ? Number(thresholdText) : null;
   $('public-content').hidden = false;
-  setStatus('public-message',`Current provider series retrieved ${formatIST(data.retrieved_at)} · ${data.attribution}`);
+  setStatus('public-message',`${Date.parse(data.expires_at)<Date.now()?'Saved data — refresh overdue. ':''}${data.attribution}`);
   $('public-stats').innerHTML = stat('Selected place',data.city,data.requested_location?.state || 'India')
     + stat('Future target hours',times.length,`${formatIST(times[0])} onward`)
     + stat('Model value range',`${num(min)}–${num(max)} ${unit}`,'Across the displayed source forecasts')
     + stat('Retrieved at',formatIST(data.retrieved_at),'Provider retrieval; model cycles not pinned');
-  $('public-chart-title').textContent = `${({precipitation:'Hourly precipitation',temperature_2m:'2 m temperature',wind_speed_10m:'10 m wind speed'})[variable]} · ${data.city}`;
+  $('public-chart-title').textContent = `${weatherLabels[variable]} · ${data.city}`;
   $('public-legend').innerHTML = ids.map((id,i)=>`<span><i style="background:${colors[i]}"></i>${esc(data.models[id].name)}</span>`).join('');
   const left = 47, right = 865, top = 32, bottom = 258;
   const guides = [0,.25,.5,.75,1].map(frac=>`<line x1="${left}" x2="${right}" y1="${bottom-frac*(bottom-top)}" y2="${bottom-frac*(bottom-top)}" stroke="#e5ece7"/><text x="39" y="${bottom-frac*(bottom-top)+4}" text-anchor="end" font-size="11" fill="#78918b">${num(min+frac*range,1)}</text>`).join('');
@@ -297,7 +335,7 @@ function renderPublic(data) {
   }).join('');
   const thresholdLine = threshold !== null && threshold >= min && threshold <= max
     ? `<line x1="${left}" x2="${right}" y1="${bottom-(threshold-min)/range*(bottom-top)}" y2="${bottom-(threshold-min)/range*(bottom-top)}" stroke="#ad6947" stroke-width="2" stroke-dasharray="6 5"/><text x="${right}" y="${bottom-(threshold-min)/range*(bottom-top)-5}" text-anchor="end" font-size="10" fill="#ad6947">Your threshold ${num(threshold,1)} ${esc(unit)}</text>` : '';
-  $('public-chart').innerHTML = guides + xTicks + thresholdLine + paths;
+  $('public-chart').innerHTML = guides + xTicks + thresholdLine + paths + windows.map((window,j)=>window.points.map((point,i)=>Number.isFinite(point.value)?`<circle cx="${left+i*(right-left)/Math.max(times.length-1,1)}" cy="${bottom-(point.value-min)/range*(bottom-top)}" r="6" fill="transparent"><title>${esc(data.models[ids[j]].name)} · ${esc(formatIST(point.time))}: ${num(point.value,1)} ${esc(unit)}</title></circle>`:'').join('')).join('');
   $('public-chart-caption').textContent = `${formatIST(times[0])} to ${formatIST(times.at(-1))} · ${unit} · separate source forecasts, not a blend`;
   $('public-model-cards').innerHTML = ids.map((id,i)=>{
     const window=windows[i];
@@ -305,7 +343,7 @@ function renderPublic(data) {
     const label=variable==='precipitation'?(window.count===times.length?'Total for selected window':'Sum of available hours'):'Highest value in selected window';
     const detail=window.count ? `Peak hour ${num(window.max,1)} ${unit} at ${formatIST(window.maxTime)} · ${window.count} available hours` : 'No usable values in this window';
     const crossings=threshold===null?'':`<small>${window.points.filter(point=>Number.isFinite(point.value)&&point.value>threshold).length} forecast hour(s) above your ${num(threshold,1)} ${esc(unit)} threshold.</small>`;
-    return `<div class="model-outlook"><strong><span style="color:${colors[i]}">●</span> ${esc(data.models[id].name)}</strong><b>${esc(primary)}</b><small>${label}. ${esc(detail)}</small>${crossings}</div>`;
+    return `<div class="model-outlook"><strong><span style="color:${colors[i]}">●</span> ${profileLink(id,data.models[id].name)}</strong><b>${esc(primary)}</b><small>${label}. ${esc(detail)}</small>${crossings}</div>`;
   }).join('');
   $('public-table').querySelector('thead').innerHTML = `<tr><th>${variable==='precipitation'?'Hour ending (IST)':'Valid time (IST)'}</th>${ids.map(id=>`<th>${esc(data.models[id].name)} (${esc(unit)})</th>`).join('')}</tr>`;
   $('public-table').querySelector('tbody').innerHTML = times.map((time,i)=>`<tr><td>${esc(formatIST(time))}</td>${windows.map(window=>`<td>${window.points[i].value===null?'—':num(window.points[i].value,1)}</td>`).join('')}</tr>`).join('');
@@ -320,6 +358,15 @@ function renderPublic(data) {
 }
 
 async function start() {
+  setupChat();loadHero();
+  document.addEventListener('click',async event=>{const profile=event.target.closest('[data-profile]');if(profile){event.preventDefault();try{await openModel(profile.dataset.profile);}catch{$('model-detail').textContent='The model profile could not be loaded.';$('model-dialog').showModal();}}const method=event.target.closest('[data-method]');if(method)openMethod(method.dataset.method);});
+  $('refresh-forecast').addEventListener('click',()=>loadPublic(true));
+  $('download-forecast').addEventListener('click',()=>{const data=liveCache.get(liveSelection.key)?.data;if(data)downloadForecast(data);});
+  const selectCoordinates=(latitude,longitude)=>setLiveSelection({key:`coords:${latitude}:${longitude}`,parameter:new URLSearchParams({latitude,longitude}).toString(),label:`${Number(latitude).toFixed(4)}° N, ${Number(longitude).toFixed(4)}° E`,note:'Forecast for your supplied coordinates; the provider uses a nearby model grid cell.'});
+  $('coordinate-form').addEventListener('submit',event=>{event.preventDefault();selectCoordinates($('latitude').value,$('longitude').value);});
+  $('use-location').addEventListener('click',()=>{if(!navigator.geolocation){setStatus('public-message','Your browser does not support location. Enter coordinates instead.',true);return;}setStatus('public-message','Waiting for your location permission…');navigator.geolocation.getCurrentPosition(position=>selectCoordinates(position.coords.latitude,position.coords.longitude),()=>setStatus('public-message','Location was unavailable or permission was declined. Search your town or enter coordinates.',true),{timeout:12000,maximumAge:300000});});
+  setInterval(()=>{if(!document.hidden && location.hash==='#public')loadPublic();},60000);
+  document.addEventListener('visibilitychange',()=>{if(!document.hidden && location.hash==='#public')loadPublic();});
   document.querySelectorAll('[data-go]').forEach(button=>button.addEventListener('click',()=>{location.hash=button.dataset.go;}));
   window.addEventListener('hashchange',()=>nav(location.hash.slice(1)));
   $('lab-variable').addEventListener('change',chooseLocation);
@@ -348,7 +395,7 @@ async function start() {
     key:`city:${button.dataset.city}`,parameter:`city=${encodeURIComponent(button.dataset.city)}`,
     label:button.dataset.city,
   })));
-  $('public-search').addEventListener('input',()=>{clearTimeout(locationSearchTimer);locationSearchTimer=setTimeout(searchPlaces,300);});
+  $('public-search').addEventListener('input',()=>{++locationSearchSerial;clearTimeout(locationSearchTimer);locationSearchTimer=setTimeout(searchPlaces,300);});
   $('public-search').addEventListener('keydown',event=>{
     if(event.key==='Escape'){$('location-results').hidden=true;$('public-search').setAttribute('aria-expanded','false');}
     if(event.key==='Enter')$('location-results').querySelector('[data-place-id]')?.click();

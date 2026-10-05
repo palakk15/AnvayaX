@@ -1,0 +1,15 @@
+.venv/
+.tools/
+.pytest_cache/
+.ruff_cache/
+artifacts/
+data/
+.env*
+src/
+tests/
+tests_web/
+dashboard.py
+Dockerfile
+requirements.lock.txt
+ppt.md
+*.png
