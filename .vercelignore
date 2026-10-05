@@ -3,7 +3,8 @@
 .pytest_cache/
 .ruff_cache/
 artifacts/
-data/
+# Exclude only local raw data; site/data contains required public assets.
+/data/
 .env*
 src/
 tests/
