@@ -1,7 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {adaptiveBlend} from '../server/intelligence.mjs';
-import {answerChat} from '../server/assistant.mjs';
+import {answerChat,groqKey,GROQ_MODEL} from '../server/assistant.mjs';
+import {GET as chatStatus} from '../api/chat.mjs';
 
 test('adaptive allocation responds to forecasts and softens with horizon while preserving diversity',()=>{
   const early=adaptiveBlend({a:20,b:21,c:29},'temperature',1);
@@ -24,6 +25,23 @@ test('chat rejects browser-supplied API keys',async()=>{
   await assert.rejects(answerChat({messages:[{role:'user',content:'Hello'}],apiKey:'gsk_'+'a'.repeat(30)}),/Client-supplied API keys/);
   const result=await answerChat({messages:[{role:'user',content:'Hello'}]},{complete:async()=>({content:'Connected'})});
   assert.equal(result.answer,'Connected');
+});
+test('one GROQ_API_KEY configures the Vercel chat route; legacy array and model overrides do not',async()=>{
+  const before={key:process.env.GROQ_API_KEY,keys:process.env.GROQ_API_KEYS,model:process.env.GROQ_MODEL};
+  try{
+    delete process.env.GROQ_API_KEY;
+    process.env.GROQ_API_KEYS='["unused-legacy-key"]';
+    process.env.GROQ_MODEL='unused-model';
+    assert.equal(groqKey(),undefined);
+    assert.equal((await (await chatStatus()).json()).configured,false);
+    process.env.GROQ_API_KEY='  server-only-key  ';
+    assert.equal(groqKey(),'server-only-key');
+    assert.deepEqual(await (await chatStatus()).json().then(({configured,model})=>({configured,model})),{configured:true,model:GROQ_MODEL});
+  }finally{
+    for(const [name,value] of Object.entries({GROQ_API_KEY:before.key,GROQ_API_KEYS:before.keys,GROQ_MODEL:before.model})){
+      if(value===undefined)delete process.env[name];else process.env[name]=value;
+    }
+  }
 });
 test('Groq authentication failure points to server configuration, never a visitor key form',async()=>{
   const before=process.env.GROQ_API_KEY,fetchBefore=globalThis.fetch;

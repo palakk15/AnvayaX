@@ -4,7 +4,7 @@ import pytest
 
 from bharatblend import explainability as module
 from bharatblend.explainability import GroqNarrator, build_evidence
-from bharatblend.settings import groq_keys, local_settings
+from bharatblend.settings import groq_key, local_settings
 
 
 @pytest.fixture(autouse=True)
@@ -65,28 +65,38 @@ def test_no_key_does_not_call_provider(evidence):
     assert '75.0%' in result['text']
 
 
-def test_ordered_credential_failover_cache_and_no_key_disclosure(evidence):
-    failed, success = Response(401), Response(content='server-key-two should not be echoed')
-    session = Session([failed, success])
-    narrator = GroqNarrator({'GROQ_API_KEYS': '["server-key-one", "server-key-two"]'}, session)
+def test_single_credential_cache_and_no_key_disclosure(evidence):
+    success = Response(content='server-key should not be echoed')
+    session = Session([success])
+    narrator = GroqNarrator({'GROQ_API_KEY': 'server-key'}, session)
     result = narrator.explain(evidence)
-    assert len(session.calls) == 2
+    assert len(session.calls) == 1
     assert result['provider'] == 'groq'
     assert 'server-key' not in str(result)
     assert 'server-key' not in str(narrator.status())
-    assert failed.closed and success.closed
+    assert success.closed
     assert narrator.explain(evidence)['cached']
-    assert len(session.calls) == 2
+    assert len(session.calls) == 1
     assert 'server-key' not in str(session.calls[0][1]['json'])
     assert 'synthetic' in session.calls[0][1]['json']['messages'][1]['content']
 
 
-def test_rate_limit_does_not_rotate_keys(evidence):
+def test_rate_limit_cools_down_single_key(evidence):
     response = Response(429, headers={'retry-after': '90'})
     session = Session([response])
-    narrator = GroqNarrator({'GROQ_API_KEYS': 'key-one,key-two'}, session)
+    narrator = GroqNarrator({'GROQ_API_KEY': 'key-one'}, session)
     assert narrator.explain(evidence)['status'] == 'local'
     assert narrator.explain(evidence)['status'] == 'local'
+    assert len(session.calls) == 1
+    assert response.closed
+
+
+def test_rejected_single_key_keeps_local_explanation(evidence):
+    response = Response(401)
+    session = Session([response])
+    result = GroqNarrator({'GROQ_API_KEY': 'bad-key'}, session).explain(evidence)
+    assert result['provider'] == 'deterministic'
+    assert 'GROQ_API_KEY was rejected' in result['reason']
     assert len(session.calls) == 1
     assert response.closed
 
@@ -107,23 +117,19 @@ def test_non_additive_gate_does_not_fabricate_feature_reasons():
     assert result['sources'][0]['logit_reconstruction_error'] is None
 
 
-def test_configuration_is_nonexecuting_deduplicated_and_environment_wins(tmp_path, monkeypatch):
+def test_configuration_is_nonexecuting_and_environment_wins(tmp_path, monkeypatch):
     file = tmp_path / '.env'
-    file.write_text('GROQ_API_KEYS=["a","a","b"]\nGROQ_MODEL=file-model\nUNRELATED=$(do-not-run)\n')
-    monkeypatch.delenv('GROQ_API_KEYS', raising=False)
-    monkeypatch.delenv('GROQ_API_KEY', raising=False)
-    monkeypatch.setenv('GROQ_MODEL', 'environment-model')
+    file.write_text('GROQ_API_KEY=file-key\nGROQ_MODEL=ignored-model\nUNRELATED=$(do-not-run)\n')
+    monkeypatch.setenv('GROQ_API_KEY', 'environment-key')
+    monkeypatch.setenv('GROQ_MODEL', 'ignored-environment-model')
     config = local_settings(file)
-    assert groq_keys(config) == ['a', 'b']
-    assert config['GROQ_MODEL'] == 'environment-model'
+    assert groq_key(config) == 'environment-key'
+    assert config['GROQ_MODEL'] == 'ignored-model'
     assert config['UNRELATED'] == '$(do-not-run)'
 
 
-@pytest.mark.parametrize('raw', ['["secret",', '[1]', '[null]'])
-def test_invalid_key_list_never_echoes_credentials(raw):
-    with pytest.raises(ValueError) as exc:
-        groq_keys({'GROQ_API_KEYS': raw})
-    assert 'secret' not in str(exc.value)
+def test_legacy_key_array_is_ignored():
+    assert groq_key({'GROQ_API_KEYS': '["old-key"]'}) is None
 
 
 def test_explanation_does_not_mutate_receipt(evidence):

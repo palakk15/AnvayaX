@@ -92,6 +92,6 @@ Current operation is request-driven with a 15-minute forecast cache and visible-
 
 ## Vercel keys and packaging
 
-Vercel project → **Settings → Environment Variables** → add **GROQ_API_KEY** and paste the secret into **Value**. Select Production (and Preview if needed), save, then redeploy. Optional `GROQ_MODEL` defaults to `openai/gpt-oss-120b`. These are server-only variables; never use a public/client prefix or paste secrets into frontend files. Public forecast and ensemble routes need no key under the provider's free-use terms.
+Vercel project → **Settings → Environment Variables** → add exactly one variable, **`GROQ_API_KEY`**, with the Groq secret in **Value**. Select Production (and Preview only if using preview URLs), save, then redeploy. The server selects `openai/gpt-oss-120b` in code; `GROQ_API_KEYS` and `GROQ_MODEL` are not used by the Vercel app. Verify `https://YOUR-SITE/api/chat` reports `"configured":true`. This variable is server-only; never use a public/client prefix or paste the secret into frontend files. Public forecast and ensemble routes need no key under the provider's free-use terms.
 
 `api/intelligence.mjs` includes `server/data/**` in its deployment bundle. Keep `.vercelignore`'s raw-data exclusion anchored as `/data/`; `data/` would also remove required nested public and server datasets. A build validates both static assets and the research snapshot.

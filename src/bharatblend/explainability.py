@@ -10,7 +10,7 @@ import time
 
 import requests
 
-from .settings import groq_keys, local_settings
+from .settings import groq_key, local_settings
 
 GROQ_ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
 _lock = Lock()
@@ -92,27 +92,27 @@ def deterministic_narrative(evidence: dict) -> str:
 class GroqNarrator:
     def __init__(self, settings=None, session=None):
         config = local_settings() if settings is None else settings
-        self.keys = groq_keys(config)
-        self.model = config.get('GROQ_MODEL') or 'openai/gpt-oss-120b'
+        self.key = groq_key(config)
+        self.model = 'openai/gpt-oss-120b'
         self.session = session or requests
 
     def status(self):
-        return {'configured': bool(self.keys), 'key_count': len(self.keys), 'model': self.model,
-                'policy': 'Ordered failover on rejected credentials only; organization-wide cooldown on 429.'}
+        return {'configured': bool(self.key), 'key_count': int(bool(self.key)), 'model': self.model,
+                'policy': 'One server credential; rate-limit cooldown applies to this instance.'}
 
     def explain(self, evidence: dict) -> dict:
         global _cooldown_until
         fallback = {'status': 'local', 'provider': 'deterministic', 'model': None,
                     'receipt_id': evidence.get('receipt_id'), 'text': deterministic_narrative(evidence),
                     'data_kind': evidence.get('data_kind')}
-        if not self.keys:
-            return fallback | {'reason': 'Groq keys are not configured. Local exact evidence is available.'}
+        if not self.key:
+            return fallback | {'reason': 'GROQ_API_KEY is not configured. Local exact evidence is available.'}
         # Only this bounded, receipt-derived object leaves the machine, on explicit request.
         compact = {k: v for k, v in evidence.items() if k != 'recent_skill'}
         compact['sources'] = [{k: (v[:8] if k == 'pairwise_differences' else v)
                                for k, v in s.items() if k != 'term_contributions'} for s in evidence['sources']]
         payload = json.dumps(compact, sort_keys=True, allow_nan=False)
-        credential_scope = hashlib.sha256('\0'.join(self.keys).encode()).hexdigest()
+        credential_scope = hashlib.sha256(self.key.encode()).hexdigest()
         cache_key = hashlib.sha256((self.model + credential_scope + payload).encode()).hexdigest()
         if len(payload) > 60000:
             return fallback | {'reason': 'Evidence exceeds the narration size limit.'}
@@ -138,41 +138,37 @@ class GroqNarrator:
                     {'role': 'user', 'content': payload},
                 ],
             }
-            # Bound latency and credential attempts. Never rotate through keys to evade 429 quotas.
-            for key in self.keys[:3]:
-                response = None
-                try:
-                    response = self.session.post(GROQ_ENDPOINT, json=body,
-                        headers={'Authorization': f'Bearer {key}', 'Content-Type': 'application/json'},
-                        timeout=(5, 20), allow_redirects=False)
-                    if response.status_code in (401, 403):
-                        continue
-                    if response.status_code == 429:
-                        try:
-                            delay = float(response.headers.get('retry-after', 60))
-                        except (TypeError, ValueError):
-                            delay = 60
-                        _cooldown_until = time.monotonic() + (max(60, delay) if math.isfinite(delay) else 60)
-                        return fallback | {'reason': 'Groq rate limit reached; Retry-After is respected for all keys.'}
-                    if response.status_code != 200:
-                        return fallback | {'reason': f'Groq returned HTTP {response.status_code}; local explanation retained.'}
-                    data = response.json()
-                    content = data['choices'][0]['message']['content']
-                    if not isinstance(content, str) or not content.strip() or len(content) > 16000:
-                        raise ValueError('Invalid narration')
-                    # A provider response should never expose configured secrets even if echoed.
-                    for secret in self.keys:
-                        content = content.replace(secret, '[redacted]')
-                    answer = fallback | {'status': 'generated', 'provider': 'groq', 'model': self.model,
-                        'text': content, 'generated_at': datetime.now(UTC).isoformat(), 'cached': False,
-                        'note': 'AI narration; exact numerical evidence remains authoritative.'}
-                    if len(_cache) >= 128:
-                        _cache.pop(next(iter(_cache)))
-                    _cache[cache_key] = answer
-                    return answer
-                except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
-                    return fallback | {'reason': 'Groq could not return a valid explanation. Local evidence retained.'}
-                finally:
-                    if response is not None:
-                        response.close()
-        return fallback | {'reason': 'Configured Groq credentials were rejected. Check keys and model permissions locally.'}
+            response = None
+            try:
+                response = self.session.post(GROQ_ENDPOINT, json=body,
+                    headers={'Authorization': f'Bearer {self.key}', 'Content-Type': 'application/json'},
+                    timeout=(5, 20), allow_redirects=False)
+                if response.status_code in (401, 403):
+                    return fallback | {'reason': 'GROQ_API_KEY was rejected. Check the key and model permissions.'}
+                if response.status_code == 429:
+                    try:
+                        delay = float(response.headers.get('retry-after', 60))
+                    except (TypeError, ValueError):
+                        delay = 60
+                    _cooldown_until = time.monotonic() + (max(60, delay) if math.isfinite(delay) else 60)
+                    return fallback | {'reason': 'Groq rate limit reached; Retry-After is respected.'}
+                if response.status_code != 200:
+                    return fallback | {'reason': f'Groq returned HTTP {response.status_code}; local explanation retained.'}
+                data = response.json()
+                content = data['choices'][0]['message']['content']
+                if not isinstance(content, str) or not content.strip() or len(content) > 16000:
+                    raise ValueError('Invalid narration')
+                # A provider response should never expose the configured secret if echoed.
+                content = content.replace(self.key, '[redacted]')
+                answer = fallback | {'status': 'generated', 'provider': 'groq', 'model': self.model,
+                    'text': content, 'generated_at': datetime.now(UTC).isoformat(), 'cached': False,
+                    'note': 'AI narration; exact numerical evidence remains authoritative.'}
+                if len(_cache) >= 128:
+                    _cache.pop(next(iter(_cache)))
+                _cache[cache_key] = answer
+                return answer
+            except (requests.RequestException, ValueError, KeyError, IndexError, TypeError):
+                return fallback | {'reason': 'Groq could not return a valid explanation. Local evidence retained.'}
+            finally:
+                if response is not None:
+                    response.close()
