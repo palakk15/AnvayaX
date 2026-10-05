@@ -1,7 +1,7 @@
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const num=v=>Number.isFinite(v)?v.toLocaleString('en-IN',{maximumFractionDigits:2}):'Unavailable';
 const time=t=>new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).format(new Date(t));
-const names={gfs_global:'NOAA GFS',ecmwf_ifs025:'ECMWF IFS',ecmwf_aifs025_single:'ECMWF AIFS'};
+const names={gfs_global:'NOAA GFS',ecmwf_ifs025:'ECMWF IFS',ecmwf_aifs025_single:'ECMWF AIFS',icon_global:'DWD ICON',gem_global:'ECCC GEM',jma_gsm:'JMA GSM'};
 const card=(title,body)=>`<article class="card science-card"><h2>${title}</h2>${body}</article>`;
 const avg=a=>a.length?a.reduce((s,v)=>s+v,0)/a.length:null;
 function bars(values,labels,unit){const min=Math.min(0,...values.filter(Number.isFinite)),max=Math.max(...values.filter(Number.isFinite),min+.01);return `<div class="analytics-bars">${values.map((v,i)=>`<div><span>${esc(labels[i])}</span><meter min="${min}" max="${max}" value="${v??min}"></meter><b>${num(v)} ${esc(unit)}</b></div>`).join('')}</div>`;}

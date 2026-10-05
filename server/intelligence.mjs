@@ -27,6 +27,12 @@ export function analyzeForecast(data,now=Date.now()) {
     }
     return out;
   });
+  for(let i=0;i<series.length;i++){
+    const row=series[i],window=series.slice(i,i+24);
+    const complete=window.length===24&&window.every((r,j)=>Number.isFinite(r.rainfall.value)&&(!j||Date.parse(r.time)-Date.parse(window[j-1].time)===3600000));
+    const month=Number(new Intl.DateTimeFormat('en',{month:'numeric',timeZone:'Asia/Kolkata'}).format(new Date(row.time)));
+    row.regime=detectRegime({temperature:row.temperature.value,wind:row.wind_uv.speed,rain24:complete?window.reduce((sum,r)=>sum+r.rainfall.value,0):null,month});
+  }
   const next24=series.slice(0,24),complete=next24.length===24&&next24.every((r,i)=>!i||Date.parse(r.time)-Date.parse(next24[i-1].time)===3600000);
   const rain24=complete&&next24.every(r=>Number.isFinite(r.rainfall.value))?next24.reduce((s,r)=>s+r.rainfall.value,0):null;
   const month=Number(new Intl.DateTimeFormat('en',{month:'numeric',timeZone:'Asia/Kolkata'}).format(new Date(now)));

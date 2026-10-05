@@ -22,7 +22,7 @@ function fixture() {
 
 test('normalizes every named model and preserves physical vector direction', () => {
   const rows = normalizeProvider(fixture());
-  assert.equal(rows.length, 6);
+  assert.equal(rows.length, 2*Object.keys(models).length);
   assert.equal(Date.parse(rows[0].valid_time)-Date.parse(rows[0].precipitation_start),3600000);
   assert.ok(Math.abs(rows[0].u10 - 4) < 1e-9);
   assert.ok(Math.abs(rows[1].u10 + 6) < 1e-9);
@@ -48,9 +48,9 @@ test('one model failing with HTML does not hide the remaining sources', async ()
     ?new Response('<html>Gateway failure</html>',{status:502}):Response.json(fixture());
   try {
     const response=await GET(new Request('http://localhost/api/public-forecast?city=Mumbai'));
-    const body=await response.json();assert.equal(response.status,200);assert.equal(body.rows.length,4);
+    const body=await response.json();assert.equal(response.status,200);assert.equal(body.rows.length,2*(Object.keys(models).length-1));
     assert.equal(body.source_status.find(s=>s.model==='ecmwf_aifs025_single').available,false);
-    assert.equal(body.source_status.filter(s=>s.available).length,2);
+    assert.equal(body.source_status.filter(s=>s.available).length,Object.keys(models).length-1);
   }finally{globalThis.fetch=original;}
 });
 
@@ -69,7 +69,7 @@ test('PIN lookup explicitly labels district coordinates as approximate', async (
 test('coordinates outside city presets support island forecasts and cache repeat requests', async () => {
   const original=globalThis.fetch;let calls=0;
   globalThis.fetch=async()=>{calls++;return Response.json(fixture());};
-  try{for(let i=0;i<2;i++){const response=await GET(new Request('http://localhost/api/public-forecast?latitude=11.62&longitude=92.72'));assert.equal(response.status,200);assert.equal((await response.json()).requested_coordinates.longitude,92.72);}assert.equal(calls,4);}
+  try{for(let i=0;i<2;i++){const response=await GET(new Request('http://localhost/api/public-forecast?latitude=11.62&longitude=92.72'));assert.equal(response.status,200);assert.equal((await response.json()).requested_coordinates.longitude,92.72);}assert.equal(calls,Object.keys(models).length+1);}
   finally{globalThis.fetch=original;}
 });
 
@@ -93,7 +93,7 @@ test('serves attributable real provider data but never declares a trained blend'
     assert.equal(body.evidence_kind, 'provider_forecast');
     assert.equal(body.trained_blend_applied, false);
     assert.equal(body.skill_verified, false);
-    assert.equal(body.rows.length, 6);
+    assert.equal(body.rows.length, 2*Object.keys(models).length);
     assert.match(body.sha256, /^[0-9a-f]{64}$/);
   } finally { globalThis.fetch = original; }
 });

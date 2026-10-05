@@ -11,11 +11,11 @@ const pct = value => `${(100 * value).toFixed(value < .001 ? 4 : 1)}%`;
 const num = (value, places = 1) => Number(value).toLocaleString('en-IN', {maximumFractionDigits:places});
 const title = value => String(value).replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
 const sourceName = id => ({gfs:'NOAA GFS',gefs:'NOAA GEFS',graphcast_operational:'GraphCast',ifs:'ECMWF IFS',aifs:'ECMWF AIFS'}[id] || title(id));
-const colors = ['#087f8c','#b66a18','#635bce','#bf5670','#417f4b'];
+const colors = ['#087f8c','#b66a18','#635bce','#bf5670','#417f4b','#354c98'];
 const profileId=id=>({ifs:'ifs_control',aifs:'aifs_single',gfs_global:'gfs',ecmwf_ifs025:'ifs_control',ecmwf_aifs025_single:'aifs_single'}[id]||id);
-const profileLink=(id,label)=>`<a href="#atlas" class="model-link" data-profile="${esc(profileId(id))}">${esc(label||sourceName(id))}</a>`;
+const profileLink=(id,label)=>['gem_global','jma_gsm'].includes(id)?`<span>${esc(label||sourceName(id))}</span>`:`<a href="#atlas" class="model-link" data-profile="${esc(profileId(id))}">${esc(label||sourceName(id))}</a>`;
 let demo, gate, catalogue, benchmark, currentCase, labTab = 'weights';
-let liveSelection = { key: 'city:Mumbai', parameter: 'city=Mumbai', label: 'Mumbai, Maharashtra' };
+let liveSelection = null;
 const liveCache = new Map();
 const researchLoads = new Map();
 let labReady = false;
@@ -74,10 +74,14 @@ function chooseLocation() {
   const locations = [...new Set(demo.cases.filter(item => item.variable === variable).map(item => item.location_id))];
   const prior = $('lab-location').value;
   fillSelect($('lab-location'),locations,title);
-  $('lab-location').value = locations.includes(prior) ? prior : (locations.includes('mumbai') ? 'mumbai' : locations[0]);
+  $('lab-location').insertAdjacentHTML('afterbegin','<option value="">Choose a research site</option>');
+  const chosen=liveSelection?.label.split(',')[0].toLowerCase();
+  $('lab-location').value = locations.includes(prior)?prior:locations.includes(chosen)?chosen:'';
   chooseCase();
 }
 function chooseCase() {
+  document.querySelector('.lab-layout').hidden=!$('lab-location').value;
+  if(!$('lab-location').value){currentCase=null;$('lab-case').innerHTML='<option>Select a site first</option>';return;}
   const cases = demo.cases.filter(item => item.variable === $('lab-variable').value && item.location_id === $('lab-location').value);
   $('lab-case').innerHTML = cases.map((item,i) => `<option value="${i}">${esc(new Date(item.base.target.valid_start).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}))} · ${item.selection.startsWith('illustrative')?'Illustrative high-rain case':'Latest prepared case'}</option>`).join('');
   $('lab-case').value = String(cases.length-1);
@@ -231,7 +235,7 @@ function renderEvidence() {
 }
 function modelFamily(item) { return item.ensemble?'ensemble':item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':item.model_class==='statistical'?'statistical':'hybrid'; }
 function atlasMetadata(item) {
-  const live=['gfs','ifs_control','aifs_single'].includes(item.id),ensemble=item.id==='gefs';
+  const live=['gfs','ifs_control','aifs_single','icon_global'].includes(item.id),ensemble=item.id==='gefs';
   const documented={gfs:['0.11 degrees (about 13 km) surface fields; delivery grids vary','16 days','Every 6 hours','https://open-meteo.com/en/docs/gfs-api'],ifs_control:['0.25-degree open-data delivery (about 25 km); distinct from 9 km HRES','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],aifs_single:['0.25-degree delivery (about 28 km)','15 days','Every 6 hours','https://open-meteo.com/en/docs/ecmwf-api'],gefs:['0.25 / 0.5-degree seamless ensemble; 31 members','10 days at 0.25 degrees, 35 days at 0.5 degrees','Every 6 hours','https://open-meteo.com/en/docs/ensemble-api']}[item.id];
   const fields=[['Resolution',item.grid||'Not verified for this integration'],['Forecast range',live?'96-hour window fetched here; native range varies':ensemble?'48-hour window fetched for guidance':'Not verified for this integration'],['Update frequency','Provider dependent; see primary documentation'],['Variables',Object.entries(item.capabilities||{}).filter(([,v])=>v===true).map(([k])=>k).join(', ')||'Not documented'],['Coverage',live||ensemble?'Global provider grid; India interface':item.use_context?.region||'See model documentation'],['Data access',live?'Named forecast API':ensemble?'Ensemble API':item.access||'Candidate; no active feed'],['Licence',item.data_license||'Verify with provider before ingestion']];
   if(documented){fields[0][1]=documented[0];fields[1][1]=`${documented[1]}; this app fetches ${ensemble?48:96} hours`;fields[2][1]=documented[2];}
@@ -242,7 +246,7 @@ function renderAtlas() {
   const query=$('model-search').value.trim().toLowerCase(),family=$('model-family').value,variable=$('model-variable').value;
   const filtered=catalogue.models.filter(item=>(family==='all'||modelFamily(item)===family)&&(variable==='all'||item.capabilities?.[variable]===true)&&(!query||[item.name,item.provider,item.description,...Object.values(item.use_context||{})].join(' ').toLowerCase().includes(query)));
   $('model-count').textContent=`${filtered.length} / ${catalogue.models.length} profiles`;
-  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p>${atlasMetadata(item)}<div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
+  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single','icon_global'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p>${atlasMetadata(item)}<div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
   $('model-grid').querySelectorAll('[data-model]').forEach(button=>button.addEventListener('click',()=>openModel(button.dataset.model)));
 }
 async function openModel(id) {
@@ -259,6 +263,8 @@ async function openModel(id) {
 let forecastSerial=0, forecastController;
 function setLiveSelection(selection) {
   liveSelection=selection; ++locationSearchSerial;
+  $('chosen-city').textContent=selection.label;
+  $('refresh-status').textContent='Forecasts for your selected location ? refresh every 15 minutes';
   $('public-selected').textContent=`Selected: ${selection.label}`;
   $('selection-note').textContent=selection.note||'';
   $('public-search').value='';$('location-results').hidden=true;$('public-search').setAttribute('aria-expanded','false');
@@ -277,6 +283,7 @@ async function searchPlaces() {
   }catch(error){if(serial===locationSearchSerial)list.innerHTML=`<div class="location-empty">${esc(error.message)}</div>`;}
 }
 async function loadPublic(force=false) {
+  if(!liveSelection){$('public-content').hidden=true;$('download-forecast').disabled=true;$('refresh-forecast').disabled=true;setStatus('public-message','Choose your city above to see its forecast. Search a place, select a quick pick, or use your location.');return;}
   const selection=liveSelection, serial=++forecastSerial, cached=liveCache.get(selection.key);
   if(!force && cached && Date.parse(cached.data.expires_at)>Date.now()){forecastController?.abort();$('refresh-forecast').disabled=false;renderPublic(cached.data);return;}
   forecastController?.abort();forecastController=new AbortController();
@@ -376,7 +383,7 @@ async function start() {
   setupChat();loadHero();
   document.addEventListener('click',async event=>{const profile=event.target.closest('[data-profile]');if(profile){event.preventDefault();try{await openModel(profile.dataset.profile);}catch{$('model-detail').textContent='The model profile could not be loaded.';$('model-dialog').showModal();}}const method=event.target.closest('[data-method]');if(method)openMethod(method.dataset.method);});
   $('refresh-forecast').addEventListener('click',()=>loadPublic(true));
-  $('download-forecast').addEventListener('click',()=>{const data=liveCache.get(liveSelection.key)?.data;if(data)downloadForecast(data);});
+  $('download-forecast').addEventListener('click',()=>{const data=liveCache.get(liveSelection?.key)?.data;if(data)downloadForecast(data);});
   const selectCoordinates=(latitude,longitude)=>setLiveSelection({key:`coords:${latitude}:${longitude}`,parameter:new URLSearchParams({latitude,longitude}).toString(),label:`${Number(latitude).toFixed(4)}° N, ${Number(longitude).toFixed(4)}° E`,note:'Forecast for your supplied coordinates; the provider uses a nearby model grid cell.'});
   $('coordinate-form').addEventListener('submit',event=>{event.preventDefault();selectCoordinates($('latitude').value,$('longitude').value);});
   $('use-location').addEventListener('click',()=>{if(!navigator.geolocation){setStatus('public-message','Your browser does not support location. Enter coordinates instead.',true);return;}setStatus('public-message','Waiting for your location permission…');navigator.geolocation.getCurrentPosition(position=>selectCoordinates(position.coords.latitude,position.coords.longitude),()=>setStatus('public-message','Location was unavailable or permission was declined. Search your town or enter coordinates.',true),{timeout:12000,maximumAge:300000});});
@@ -400,11 +407,11 @@ async function start() {
   ['model-family','model-variable'].forEach(id=>$(id).addEventListener('change',renderAtlas));
   ['public-variable','public-horizon'].forEach(id=>$(id).addEventListener('change',()=>{
     if(id==='public-variable')$('public-threshold').value='';
-    const cached=liveCache.get(liveSelection.key);
+    const cached=liveCache.get(liveSelection?.key);
     if(cached)renderPublic(cached.data); else loadPublic();
   }));
   $('public-threshold').addEventListener('input',()=>{
-    const cached=liveCache.get(liveSelection.key);
+    const cached=liveCache.get(liveSelection?.key);
     if(cached)renderPublic(cached.data);
   });
   document.querySelectorAll('[data-city]').forEach(button=>button.addEventListener('click',()=>setLiveSelection({

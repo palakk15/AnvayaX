@@ -54,7 +54,8 @@ export async function resolveLocation(params) {
       return place;
     });
   }
-  const city = params.get('city') || 'Mumbai';
+  const city = params.get('city')?.trim();
+  if(!city)throw new ServiceError('Choose a city, search for a place, or enter coordinates first.',400);
   if (Object.hasOwn(cities,city)) { const [latitude,longitude]=cities[city]; return {name:city,latitude,longitude,country_code:'IN',precision:'city centre'}; }
   const result = await searchLocations(city);
   if (result.locations.length !== 1) throw new ServiceError(result.locations.length ? 'Several places match. Choose a search result first.' : 'Place not found. Try a district name or coordinates.',400);

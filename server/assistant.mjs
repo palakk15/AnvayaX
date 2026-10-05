@@ -53,7 +53,7 @@ export async function executeTool(name, args) {
     const all=(await catalogue()).models, query=String(args.query||'').toLowerCase().slice(0,100);
     const filtered=all.filter(m=>!query || [m.id,m.name,m.provider,m.description,...Object.values(m.use_context||{})].join(' ').toLowerCase().includes(query));
     const matches=filtered.slice(0,5).map(m=>({id:m.id,name:m.name,provider:m.provider,description:m.description,architecture:m.architecture,capabilities:m.capabilities,use_context:Object.fromEntries(Object.entries(m.use_context||{}).map(([k,v])=>[k,String(v).slice(0,500)])),pros:m.pros,cons:m.cons,evidence_urls:m.evidence_urls}));
-    return {total_models:all.length,matches,index:all.map(m=>({id:m.id,name:m.name})),scope:'Catalogue profiles are not local validation. Only GFS, IFS and AIFS are fetched live. Research benchmark and model weights are synthetic.'};
+    return {total_models:all.length,matches,index:all.map(m=>({id:m.id,name:m.name})),scope:'Catalogue profiles are not local validation. GFS, IFS, AIFS, ICON, GEM and GSM are requested live when available. Research benchmarks and research gate weights use generated cases. Live blending uses an unvalidated agreement heuristic.'};
   }
   throw new ServiceError('Unknown assistant tool.',400);
 }

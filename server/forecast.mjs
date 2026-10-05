@@ -4,6 +4,9 @@ export const models = Object.freeze({
   gfs_global: { name: 'NOAA GFS', agency: 'NOAA/NCEP' },
   ecmwf_ifs025: { name: 'ECMWF IFS', agency: 'ECMWF' },
   ecmwf_aifs025_single: { name: 'ECMWF AIFS Single', agency: 'ECMWF' },
+  icon_global: { name: 'DWD ICON Global', agency: 'DWD' },
+  gem_global: { name: 'ECCC GEM Global', agency: 'ECCC' },
+  jma_gsm: { name: 'JMA GSM', agency: 'JMA' },
 });
 const fields = Object.freeze({ precipitation: 'mm', temperature_2m: '°C', wind_speed_10m: 'm/s', wind_direction_10m: '°' });
 const endpoint = 'https://api.open-meteo.com/v1/forecast';
@@ -35,7 +38,7 @@ async function dailyForecast(location) {
     if(data.daily_units?.[field]!==unit || !Array.isArray(data.daily[field]) || data.daily[field].length!==data.daily.time.length || data.daily[field].some(v=>v!==null && !Number.isFinite(v)))throw new ServiceError('Daily overview failed its data-quality check.');
   }
   if(data.current_units?.temperature_2m!=='°C' || data.current_units?.wind_speed_10m!=='m/s' || data.utc_offset_seconds!==19800 || !/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(data.current.time))throw new ServiceError('Current overview failed its data-quality check.');
-  return {current:data.current,current_units:data.current_units,daily:data.daily,daily_units:data.daily_units,source_url:url.toString(),source:'Open-Meteo automatic model selection',note:'Current conditions are model estimates, not measurements from a local station. Daily values use the provider’s automatic model selection, separate from the three named series.'};
+  return {current:data.current,current_units:data.current_units,daily:data.daily,daily_units:data.daily_units,source_url:url.toString(),source:'Open-Meteo automatic model selection',note:'Current conditions are model estimates, not measurements from a local station. Daily values use the provider’s automatic model selection, separate from the named source series.'};
 }
 export async function getForecast(location) {
   const key=`forecast:${location.latitude.toFixed(4)}:${location.longitude.toFixed(4)}`;
@@ -53,7 +56,7 @@ export async function getForecast(location) {
       sources:available.map(({model,source_url,grid})=>({model,source_url,grid})),source_url:available[0].source_url,
       sha256:createHash('sha256').update(JSON.stringify(rows)).digest('hex'),
       model_run_initialization:null,skill_verified:false,trained_blend_applied:false,
-      attribution:'Weather data: Open-Meteo (CC BY 4.0); named forecasts: NOAA/NCEP and ECMWF.',documentation_url:'https://open-meteo.com/en/docs',license_url:'https://open-meteo.com/en/terms',
+      attribution:'Weather data: Open-Meteo (CC BY 4.0); named forecasts: NOAA/NCEP, ECMWF, DWD, ECCC and JMA.',documentation_url:'https://open-meteo.com/en/docs',license_url:'https://open-meteo.com/en/terms',
       notes:['Values are model forecasts, not station observations.','Hourly data may be interpolated from coarser native model steps.','Precipitation is the preceding-hour total, including snow water equivalent.','Model disagreement is not a calibrated confidence interval.','Latest-series retrieval does not identify a single model initialization cycle.','Research weights are not applied to these live forecasts.']};
   });
   return {...forecast,city:location.name,requested_location:location,requested_coordinates:{latitude:location.latitude,longitude:location.longitude}};
