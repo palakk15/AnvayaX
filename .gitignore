@@ -1,0 +1,15 @@
+.venv/
+.tools/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+artifacts/
+/data/
+*.egg-info/
+.streamlit/secrets.toml
+.env
+.env.local
+.vercel/
+node_modules/
+site/ppt.md

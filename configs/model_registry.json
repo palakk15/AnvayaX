@@ -1,0 +1,890 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-25",
+  "notes": [
+    "Candidate metadata is not an operational integration or measured-skill claim.",
+    "null means unknown; false means documented absence for the named version/family.",
+    "All models remain disabled until a supplied real archive is audited, licensed and evaluated.",
+    "Metrics are intentionally null until leakage-safe evaluation on real India data.",
+    "training_end uses conservative final-year boundaries where sources specify only years; it applies only to an exact model_version match."
+  ],
+  "models": [
+    {
+      "id": "gfs",
+      "name": "NOAA GFS",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "initial_public_candidate",
+      "purpose": "Initial public rainfall, temperature and wind baseline.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "NOAA NODD open data; attribution requested",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/noaa-gfs-bdp-pds/"
+      ],
+      "access": "Public GRIB2; preserve cycle version, interval and publication timestamps.",
+      "grid": "Select documented 0.25 degree delivery grid; delivery grid is not native resolution.",
+      "ensemble": false
+    },
+    {
+      "id": "gefs",
+      "name": "NOAA GEFS",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "initial_public_candidate",
+      "purpose": "Initial public probabilistic rainfall baseline.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "NOAA NODD open data; attribution requested",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/noaa-gefs/",
+        "https://registry.opendata.aws/noaa-gefs-reforecast/"
+      ],
+      "ensemble": true,
+      "access": "Operational and GEFS v12 retrospective archives are separate.",
+      "notes": [
+        "GEFS v12 2000-2019 reforecasts have 5 daily members and an 11-member weekly extension, not operational member counts."
+      ]
+    },
+    {
+      "id": "ifs_control",
+      "name": "ECMWF IFS control",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Independent NWP baseline after matching the available common evaluation period.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "CC-BY-4.0 plus ECMWF Terms of Use",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/open-data",
+        "https://github.com/ecmwf/ecmwf-opendata"
+      ],
+      "ensemble": false,
+      "access": "Open-data control forecast; select type=cf and pin cycle. Older archives may need registration.",
+      "notes": [
+        "Control, HRES and ensemble products must not be silently interchanged."
+      ]
+    },
+    {
+      "id": "ifs_ens",
+      "name": "ECMWF IFS ENS",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Probabilistic NWP comparator and later expert.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "CC-BY-4.0 plus ECMWF Terms of Use",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/open-data"
+      ],
+      "ensemble": true,
+      "access": "Open-data ensemble; archive coverage and member inventory must be audited."
+    },
+    {
+      "id": "aifs_single",
+      "name": "ECMWF AIFS Single",
+      "version": "aifs-single-2.0",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Later AI rainfall, temperature and wind expert with checkpoint-specific training embargo.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": "2024-12-31T23:59:59.999999Z",
+      "training_cutoff_status": "documented_training_through_2024_conservative_year_end",
+      "weights_license": "CC-BY-4.0",
+      "code_license": "Apache-2.0 (inference examples)",
+      "data_license": "CC-BY-4.0 plus ECMWF Terms of Use",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/aifs-machine-learning-data",
+        "https://huggingface.co/ecmwf/aifs-single-2.0"
+      ],
+      "ensemble": false,
+      "notes": [
+        "Version 2 implemented 2026-05-12. Native atmospheric resolution approximately 31 km; six-hour steps."
+      ]
+    },
+    {
+      "id": "aifs_ens",
+      "name": "ECMWF AIFS ENS",
+      "version": "aifs-ens-v2",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Later probabilistic AI comparator after archive and training-cutoff review.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "CC-BY-4.0 plus ECMWF Terms of Use",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/aifs-machine-learning-data"
+      ],
+      "ensemble": true,
+      "notes": [
+        "Provider documents v2 from 2026-05-12 and ensemble archives from July 2025; this entry does not infer the v2 checkpoint training cutoff."
+      ]
+    },
+    {
+      "id": "graphcast_operational",
+      "name": "GraphCast Operational",
+      "version": "GraphCast_operational",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "initial_public_candidate",
+      "purpose": "Initial public AI rainfall expert using NOAA AIWP hindcasts.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": "2021-12-31T23:59:59.999999Z",
+      "training_cutoff_status": "documented_HRES_finetuning_through_2021_conservative_year_end",
+      "weights_license": "CC-BY-4.0 (official August 2026 updated terms)",
+      "code_license": "Apache-2.0",
+      "data_license": "NOAA AIWP provider states open data without usage restrictions",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/aiwp/",
+        "https://github.com/google-deepmind/weathernext/blob/main/docs/weathernext1_graph/README.md"
+      ],
+      "ensemble": false,
+      "notes": [
+        "NOAA documents six-hour precipitation totals and archive start January 2022.",
+        "NOAA package versions and GFS/IFS initializations must be tracked separately from checkpoint identity."
+      ]
+    },
+    {
+      "id": "pangu_weather",
+      "name": "Pangu-Weather",
+      "version": null,
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "initial_public_candidate",
+      "purpose": "Initial public temperature and wind expert; unavailable for native rainfall.",
+      "capabilities": {
+        "rainfall": false,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "NOAA AIWP provider states open data without usage restrictions",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/aiwp/",
+        "https://github.com/198808xc/Pangu-Weather"
+      ],
+      "ensemble": false,
+      "notes": [
+        "No native precipitation field. A separately trained diagnostic pipeline would be a distinct source.",
+        "NOAA documents reforecasts from October 2020; this is not a verified checkpoint cutoff. Weight licensing remains unverified here."
+      ]
+    },
+    {
+      "id": "fourcastnet_v2_small",
+      "name": "FourCastNet v2-small",
+      "version": null,
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "initial_public_candidate",
+      "purpose": "Initial public temperature and wind expert; no native rainfall.",
+      "capabilities": {
+        "rainfall": false,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "NOAA AIWP provider states open data without usage restrictions",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/aiwp/"
+      ],
+      "ensemble": false,
+      "notes": [
+        "The NOAA v2-small variable inventory does not include precipitation. Do not transfer precipitation capability from FourCastNet v1 or another checkpoint."
+      ]
+    },
+    {
+      "id": "fourcastnet_3",
+      "name": "FourCastNet 3",
+      "version": "fourcastnet3-2025-07-18",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional probabilistic temperature and wind research expert.",
+      "capabilities": {
+        "rainfall": false,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "Apache-2.0",
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://huggingface.co/nvidia/fourcastnet3",
+        "https://arxiv.org/abs/2507.12144"
+      ],
+      "ensemble": true,
+      "notes": [
+        "The published model does not include a native precipitation output; the paper identifies it as future diagnostic work.",
+        "Reported global benchmarks are not local India skill evidence."
+      ]
+    },
+    {
+      "id": "aurora_original",
+      "name": "Aurora original weather checkpoint",
+      "version": "aurora-0.25-finetuned.ckpt",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional surface temperature and wind research expert.",
+      "capabilities": {
+        "rainfall": false,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "MIT (official model repository)",
+      "code_license": "MIT",
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://microsoft.github.io/aurora/models.html",
+        "https://huggingface.co/microsoft/aurora",
+        "https://github.com/microsoft/aurora"
+      ],
+      "ensemble": false,
+      "notes": [
+        "Original default weather surface channels are 2t, 10u, 10v and msl; no native rain channel."
+      ]
+    },
+    {
+      "id": "aurora_1_5",
+      "name": "Aurora 1.5",
+      "version": "Aurora-1.5",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional expanded-variable deterministic expert.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "MIT (official model repository)",
+      "code_license": "MIT",
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://microsoft.github.io/aurora/models.html",
+        "https://huggingface.co/microsoft/aurora",
+        "https://www.microsoft.com/en-us/research/blog/aurora-1-5-extending-open-foundation-models-for-weather-and-earth-system-applications/"
+      ],
+      "ensemble": false,
+      "notes": [
+        "July 2026 release adds precipitation and hourly output. Audit the precise checkpoint, accumulation metadata and cutoff before use."
+      ]
+    },
+    {
+      "id": "aurora_1_5_ensemble",
+      "name": "Aurora 1.5 ensemble",
+      "version": "Aurora-1.5-ensemble",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional ensemble extension; do not reuse original Aurora's capabilities.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "MIT (official model repository)",
+      "code_license": "MIT",
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://microsoft.github.io/aurora/models.html",
+        "https://huggingface.co/microsoft/aurora"
+      ],
+      "ensemble": true
+    },
+    {
+      "id": "gencast",
+      "name": "GenCast",
+      "version": "GenCast 0p25deg <2019",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional probabilistic expert evaluated at native accumulation intervals.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": false
+      },
+      "training_end": "2018-12-31T23:59:59.999999Z",
+      "training_cutoff_status": "documented_training_through_2018_conservative_year_end",
+      "weights_license": "CC-BY-4.0 (official updated terms)",
+      "code_license": "Apache-2.0",
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://github.com/google-deepmind/weathernext/blob/main/docs/weathernext1_gen/README.md",
+        "https://arxiv.org/abs/2312.15796"
+      ],
+      "ensemble": true,
+      "notes": [
+        "Research checkpoint is distinct from the Operational <2022 checkpoint.",
+        "Native 12-hour rainfall totals must not be split into fabricated six-hour totals."
+      ]
+    },
+    {
+      "id": "weathernext_2",
+      "name": "WeatherNext 2",
+      "version": "WeatherNext2_<2025",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional open-weight/managed ensemble expert after exact product review.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": "2024-12-31T23:59:59.999999Z",
+      "training_cutoff_status": "documented_training_through_2024_conservative_year_end",
+      "weights_license": "CC-BY-4.0",
+      "code_license": "Apache-2.0",
+      "data_license": "Historical served data: CC-BY-4.0; real-time and managed inference have separate provider terms",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://github.com/google-deepmind/weathernext/blob/main/README.md",
+        "https://developers.google.com/weathernext/guides/disclaimers"
+      ],
+      "ensemble": true,
+      "notes": [
+        "Released weights and commercial served data are different access routes and must not share assumed licensing or versions."
+      ]
+    },
+    {
+      "id": "weathernext_3",
+      "name": "WeatherNext 3",
+      "version": "WeatherNext-3",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Optional managed ensemble product; no assumed local checkpoint or archive entitlement.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "Historical served data: CC-BY-4.0; real-time data and managed services have separate terms",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://deepmind.google/science/weathernext/",
+        "https://developers.google.com/weathernext",
+        "https://developers.google.com/weathernext/guides/disclaimers"
+      ],
+      "ensemble": true,
+      "notes": [
+        "Provider describes hourly initializations, variable-dependent resolution and 15-day ensembles. Exact fields, account access, cutoff and historical availability need audit."
+      ]
+    },
+    {
+      "id": "neuralgcm_standard",
+      "name": "NeuralGCM standard",
+      "version": "v1/stochastic_1_4_deg.pkl",
+      "model_class": "hybrid",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Atmospheric research comparator; not a direct precipitation expert.",
+      "capabilities": {
+        "rainfall": false,
+        "temperature": null,
+        "wind_uv": null,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "CC-BY-SA-4.0",
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://github.com/neuralgcm/neuralgcm/blob/main/docs/checkpoints.md",
+        "https://github.com/neuralgcm/neuralgcm"
+      ],
+      "ensemble": true,
+      "notes": [
+        "Standard checkpoints do not directly predict precipitation. Atmospheric temperature/wind are not automatically canonical 2m temperature/10m wind.",
+        "External ocean forcing and any surface diagnostic pipeline must be documented."
+      ]
+    },
+    {
+      "id": "neuralgcm_precipitation",
+      "name": "NeuralGCM precipitation checkpoint",
+      "version": "v1_precip/stochastic_precip_2_8_deg.pkl",
+      "model_class": "hybrid",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "candidate_requires_data_audit",
+      "purpose": "Coarse-grid precipitation research comparator; not an India local-resolution substitute.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": null,
+        "wind_uv": null,
+        "gust": false
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": "CC-BY-SA-4.0",
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://github.com/neuralgcm/neuralgcm/blob/main/docs/checkpoints.md",
+        "https://arxiv.org/abs/2412.11973"
+      ],
+      "ensemble": true,
+      "grid": "2.8 degrees",
+      "notes": [
+        "Precipitation-specific checkpoint; documented cumulative precipitation is intended for intervals of at least six hours.",
+        "Any rate integration must be explicit and retain interval endpoints."
+      ]
+    },
+    {
+      "id": "ncum_global",
+      "name": "NCUM global",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "provider_access_required",
+      "purpose": "India-domain optional comparator after provider access and version audit.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ncmrwf.gov.in/Reports-eng/WinterReport_DJF2023-24_final_18072024.pdf",
+        "https://nwp.ncmrwf.gov.in/model-guidance"
+      ],
+      "ensemble": false,
+      "grid": "2023-24 report: 12 km",
+      "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
+      "notes": [
+        "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
+      ]
+    },
+    {
+      "id": "ncum_regional",
+      "name": "NCUM regional",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "provider_access_required",
+      "purpose": "India-domain optional comparator after provider access and version audit.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ncmrwf.gov.in/Reports-eng/WinterReport_DJF2023-24_final_18072024.pdf",
+        "https://nwp.ncmrwf.gov.in/model-guidance"
+      ],
+      "ensemble": false,
+      "grid": "2023-24 report: 4 km",
+      "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
+      "notes": [
+        "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
+      ]
+    },
+    {
+      "id": "neps_global",
+      "name": "NEPS global",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "provider_access_required",
+      "purpose": "India-domain optional comparator after provider access and version audit.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ncmrwf.gov.in/Reports-eng/WinterReport_DJF2023-24_final_18072024.pdf",
+        "https://nwp.ncmrwf.gov.in/model-guidance"
+      ],
+      "ensemble": true,
+      "grid": "2023-24 report: 12 km",
+      "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
+      "notes": [
+        "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
+      ]
+    },
+    {
+      "id": "neps_regional",
+      "name": "NEPS regional",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "provider_access_required",
+      "purpose": "India-domain optional comparator after provider access and version audit.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www.ncmrwf.gov.in/Reports-eng/WinterReport_DJF2023-24_final_18072024.pdf",
+        "https://nwp.ncmrwf.gov.in/model-guidance"
+      ],
+      "ensemble": true,
+      "grid": "2023-24 report: 4 km",
+      "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
+      "notes": [
+        "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
+      ]
+    },
+    {
+      "id": "laxmi",
+      "name": "LAXMI",
+      "version": null,
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "research_checkpoint_access_unverified",
+      "purpose": "Observation-trained precipitation research comparator, pending a downloadable checkpoint and exact training cutoff.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": null,
+        "wind_uv": null,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://arxiv.org/abs/2609.03210",
+        "https://arxiv.org/html/2609.03210v1"
+      ],
+      "ensemble": true,
+      "notes": [
+        "September 2026 preprint describes an AIFS-CRPS graph-transformer retrained with IMERG precipitation, evaluated at approximately 0.25 degrees.",
+        "The paper's global and India tropical-storm results are not this project's measured skill. Weights, data access, license and checkpoint cutoff remain unverified.",
+        "The paper states that real-time use requires additional adaptation to operational initial conditions."
+      ]
+    },
+    {
+      "id": "jua_ept_2",
+      "name": "Jua EPT-2",
+      "version": "EPT-2",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "enabled": false,
+      "status": "provider_access_required",
+      "purpose": "Optional commercial expert; exact product and rights required.",
+      "capabilities": {
+        "rainfall": null,
+        "temperature": true,
+        "wind_uv": null,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": "Provider subscription/API terms; no blanket open-data permission recorded",
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://docs.jua.ai/models-and-products/jua-models/ept-2",
+        "https://docs.jua.ai/python-sdk/weather"
+      ],
+      "ensemble": false,
+      "notes": [
+        "EPT-2 deterministic and EPT-2e ensemble are distinct products.",
+        "Wind speed/direction require an explicit documented conversion before canonical wind_uv ingestion. Rainfall entitlement/field availability remains unverified here."
+      ]
+    },
+    {
+      "id": "wrf",
+      "name": "WRF configured regional pipeline",
+      "version": null,
+      "model_class": "nwp",
+      "kind": "configured_forecast_pipeline",
+      "enabled": false,
+      "status": "pipeline_not_configured",
+      "purpose": "Optional versioned regional NWP experiment with audited boundary conditions.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "not_applicable",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www2.mmm.ucar.edu/wrf/site/users_guide/"
+      ],
+      "ensemble": null,
+      "notes": [
+        "WRF is configurable software, not a ready-to-ingest archive. Register domain, physics, model release and driving data as one reproducible pipeline."
+      ]
+    },
+    {
+      "id": "aifs_wrf",
+      "name": "AIFS-driven WRF pipeline",
+      "version": null,
+      "model_class": "hybrid",
+      "kind": "configured_forecast_pipeline",
+      "enabled": false,
+      "status": "pipeline_not_configured",
+      "purpose": "Optional experiment requiring boundary-field completeness and regional validation.",
+      "capabilities": {
+        "rainfall": null,
+        "temperature": null,
+        "wind_uv": null,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://www2.mmm.ucar.edu/wrf/site/users_guide/",
+        "https://www.ecmwf.int/en/forecasts/datasets/aifs-machine-learning-data"
+      ],
+      "ensemble": null,
+      "notes": [
+        "A proposed pipeline, not a documented operational source. Compatibility, derived fields and skill are not established.",
+        "Record both AIFS and WRF versions and propagate the driving checkpoint training cutoff."
+      ]
+    },
+    {
+      "id": "corrdiff",
+      "name": "CorrDiff",
+      "version": null,
+      "model_class": "ai",
+      "kind": "downscaler",
+      "enabled": false,
+      "status": "component_not_independent_forecaster",
+      "purpose": "Optional downscaling component after region-specific training and validation.",
+      "capabilities": {
+        "rainfall": null,
+        "temperature": null,
+        "wind_uv": null,
+        "gust": null
+      },
+      "training_end": null,
+      "training_cutoff_status": "unknown_checkpoint_cutoff",
+      "weights_license": null,
+      "code_license": null,
+      "data_license": null,
+      "access_verified": false,
+      "archive_verified": false,
+      "india_skill_metrics": null,
+      "evidence_urls": [
+        "https://build.nvidia.com/nvidia/corrdiff"
+      ],
+      "ensemble": null,
+      "notes": [
+        "Conditional regional downscaler, not an independent global forecaster.",
+        "Capability, license and domain depend on the selected checkpoint; the demonstration domain must not be assumed valid for India."
+      ]
+    }
+  ]
+}

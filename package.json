@@ -1,0 +1,11 @@
+{
+  "name": "bharatblend-vercel-frontend",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build_site.mjs",
+    "dev": "node scripts/preview_site.mjs",
+    "test:web": "node --test tests_web/*.test.mjs"
+  },
+  "engines": { "node": ">=20" }
+}

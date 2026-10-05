@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "reviewed_on": "2026-09-25",
+  "notes": [
+    "No datasets have been downloaded or verified by these metadata entries.",
+    "Prefer public forecasts and independently observed verification targets before adding credentialed sources.",
+    "Unknown latency and licenses remain null; provider nominal latency never substitutes for available_at."
+  ],
+  "datasets": [
+    {
+      "id": "noaa_gfs",
+      "name": "NOAA GFS public forecast archive",
+      "kind": "forecast",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": "NOAA NODD open-data policy",
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/noaa-gfs-bdp-pds/"
+      ],
+      "source_ids": [
+        "gfs"
+      ],
+      "priority": "initial",
+      "access": "Public anonymous S3",
+      "bucket": "noaa-gfs-bdp-pds",
+      "format": "GRIB2",
+      "constraints": [
+        "Pin model cycle and parse GRIB step metadata.",
+        "Do not assume a recent rolling mirror contains a multi-year historical archive."
+      ]
+    },
+    {
+      "id": "noaa_gefs",
+      "name": "NOAA GEFS operational forecasts",
+      "kind": "forecast",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": "NOAA NODD open-data policy",
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/noaa-gefs/"
+      ],
+      "source_ids": [
+        "gefs"
+      ],
+      "priority": "initial",
+      "access": "Public anonymous S3",
+      "bucket": "noaa-gefs-pds",
+      "format": "GRIB2",
+      "constraints": [
+        "Preserve every retained member and its identity.",
+        "Operational archive completeness is unverified."
+      ]
+    },
+    {
+      "id": "noaa_gefs_v12_reforecast",
+      "name": "NOAA GEFS v12 reforecast",
+      "kind": "hindcast",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": "NOAA NODD open-data policy",
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/noaa-gefs-reforecast/"
+      ],
+      "source_ids": [
+        "gefs"
+      ],
+      "priority": "optional",
+      "access": "Public anonymous S3",
+      "bucket": "noaa-gefs-retrospective",
+      "format": "GRIB2",
+      "documented_period": "2000-2019",
+      "constraints": [
+        "Daily 00 UTC: 5 members; weekly extension: 11 members.",
+        "Not interchangeable with operational GEFS or with the post-2021 GraphCast evaluation period."
+      ]
+    },
+    {
+      "id": "noaa_aiwp",
+      "name": "NOAA/CIRA AIWP reforecasts",
+      "kind": "hindcast",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": "Provider states Open Data with no usage restrictions",
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://registry.opendata.aws/aiwp/"
+      ],
+      "source_ids": [
+        "graphcast_operational",
+        "pangu_weather",
+        "fourcastnet_v2_small"
+      ],
+      "priority": "initial",
+      "access": "Public anonymous S3; bounded listing adapter implemented",
+      "bucket": "noaa-oar-mlwp-data",
+      "format": "NetCDF",
+      "documented_start": {
+        "graphcast_operational": "2022-01",
+        "pangu_weather": "2020-10",
+        "fourcastnet_v2_small": "2020-10"
+      },
+      "constraints": [
+        "Only GraphCast has native rainfall in this archive.",
+        "Keep GFS and IFS initializations distinct; inspect object names and metadata.",
+        "Provider explicitly warns that records can be missing."
+      ]
+    },
+    {
+      "id": "ecmwf_open",
+      "name": "ECMWF IFS and AIFS open data",
+      "kind": "forecast",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": "CC-BY-4.0 plus ECMWF Terms of Use",
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/open-data"
+      ],
+      "source_ids": [
+        "ifs_control",
+        "ifs_ens",
+        "aifs_single",
+        "aifs_ens"
+      ],
+      "priority": "later",
+      "access": "Public current product subset; historical MARS access may require registration",
+      "format": "GRIB2",
+      "constraints": [
+        "Verify timestamp-specific product and model cycle.",
+        "Rainfall step semantics must be decoded before canonical ingestion."
+      ]
+    },
+    {
+      "id": "imd_daily_rainfall",
+      "name": "IMD 0.25 degree daily gauge rainfall",
+      "kind": "observation",
+      "variables": [
+        "rainfall"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://www.imdpune.gov.in/cmpg/Griddata/Rainfall_25_NetCDF.html"
+      ],
+      "priority": "preferred_daily_verification",
+      "access": "Provider download and applicable data-use terms require review",
+      "format": "NetCDF/binary",
+      "grid": "0.25 degrees",
+      "constraints": [
+        "Retain the published daily accumulation window including its UTC offset; do not assume midnight UTC.",
+        "A daily total cannot verify individual six-hour intervals.",
+        "Record missing-value masks, processing version and publication/revision time."
+      ]
+    },
+    {
+      "id": "imerg_early",
+      "name": "NASA GPM IMERG early",
+      "kind": "observation",
+      "variables": [
+        "rainfall"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://gpm.nasa.gov/data/imerg"
+      ],
+      "priority": "near_real_time",
+      "access": "Earthdata/PPS account may be required for selected endpoint",
+      "format": "HDF5/NetCDF/GeoTIFF",
+      "grid": "0.1 degree half-hourly product (version-dependent)",
+      "nominal_latency_hours": 4,
+      "latency_note": "Nominal provider latency is not a per-record availability timestamp.",
+      "constraints": [
+        "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
+        "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
+        "Final/reprocessed data must not be used as if available at the original forecast issue time."
+      ]
+    },
+    {
+      "id": "imerg_late",
+      "name": "NASA GPM IMERG late",
+      "kind": "observation",
+      "variables": [
+        "rainfall"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://gpm.nasa.gov/data/imerg"
+      ],
+      "priority": "delayed_near_real_time",
+      "access": "Earthdata/PPS account may be required for selected endpoint",
+      "format": "HDF5/NetCDF/GeoTIFF",
+      "grid": "0.1 degree half-hourly product (version-dependent)",
+      "nominal_latency_hours": 14,
+      "latency_note": "Nominal provider latency is not a per-record availability timestamp.",
+      "constraints": [
+        "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
+        "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
+        "Final/reprocessed data must not be used as if available at the original forecast issue time."
+      ]
+    },
+    {
+      "id": "imerg_final",
+      "name": "NASA GPM IMERG final",
+      "kind": "observation",
+      "variables": [
+        "rainfall"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://gpm.nasa.gov/data/imerg"
+      ],
+      "priority": "retrospective_verification",
+      "access": "Earthdata/PPS account may be required for selected endpoint",
+      "format": "HDF5/NetCDF/GeoTIFF",
+      "grid": "0.1 degree half-hourly product (version-dependent)",
+      "nominal_latency_hours": null,
+      "latency_note": "Final release can take months; use actual release time.",
+      "constraints": [
+        "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
+        "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
+        "Final/reprocessed data must not be used as if available at the original forecast issue time."
+      ]
+    },
+    {
+      "id": "noaa_isd",
+      "name": "NOAA NCEI Integrated Surface Database",
+      "kind": "observation",
+      "variables": [
+        "temperature",
+        "wind_uv",
+        "gust",
+        "rainfall"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://www.ncei.noaa.gov/products/land-based-station/integrated-surface-database"
+      ],
+      "priority": "station_verification",
+      "access": "Public NCEI downloads; India station coverage and timestamps must be audited",
+      "format": "Provider station formats",
+      "constraints": [
+        "Respect station QC flags and missing codes; precipitation intervals vary.",
+        "Convert meteorological wind direction and speed to u/v explicitly.",
+        "Daily extrema are not instantaneous temperatures or instantaneous gust values."
+      ]
+    },
+    {
+      "id": "imd_stations",
+      "name": "IMD station observations",
+      "kind": "observation",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv",
+        "gust"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://dsp.imdpune.gov.in/"
+      ],
+      "priority": "optional_provider_access",
+      "access": "Provider portal/permission and exact product terms required",
+      "constraints": [
+        "Do not infer a public machine-readable archive from station charts.",
+        "Document station relocations, altitude, instrument/QC and publication time."
+      ]
+    },
+    {
+      "id": "era5",
+      "name": "ERA5 reanalysis",
+      "kind": "reanalysis",
+      "variables": [
+        "rainfall",
+        "temperature",
+        "wind_uv"
+      ],
+      "enabled": false,
+      "access_verified": false,
+      "archive_verified": false,
+      "quality_audited": false,
+      "data_license": null,
+      "latency_hours": null,
+      "evidence_urls": [
+        "https://www.ecmwf.int/en/forecasts/datasets/complete-era5-global-atmospheric-reanalysis"
+      ],
+      "priority": "secondary_reference_only",
+      "access": "Copernicus Climate Data Store account and dataset terms",
+      "constraints": [
+        "Reanalysis is model-assisted and is not independent gauge/station ground truth.",
+        "Several AI models were trained on ERA5: holdout periods must follow their training cutoff.",
+        "Use only timestamp-available fields as features; revised analyses cannot be historical operational inputs."
+      ]
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+.weight-map-panel { margin-top: 18px; }
+.weight-map-panel .card-heading { align-items: center; }
+.map-select-label { font-size: 10px; font-weight: 800; color: #77929a; display: grid; gap: 5px; }
+.map-select-label select { border: 1px solid #e1e9eb; border-radius: 7px; background: #f7faf9; color: #24505d; padding: 8px; min-width: 135px; }
+.map-layout { display: grid; grid-template-columns: minmax(0, 3fr) minmax(180px, 1fr); gap: 22px; align-items: center; }
+.map-layout svg { width: 100%; height: auto; background: #fbfdfc; border-radius: 12px; }
+.map-note { font-size: 11px; color: #708a92; line-height: 1.6; }
+.map-note strong { color: #224e5a; font-size: 12px; }
+.map-note p { font-size: 11px; }
+.map-note #map-range { background: #e8f7f3; color: #137b71; border-radius: 8px; padding: 10px; font-weight: 800; }
+@media(max-width:650px) { .map-layout { grid-template-columns: 1fr; } .weight-map-panel .card-heading { display: block; } .map-select-label { margin-bottom: 10px; } }
