@@ -20,8 +20,8 @@ test('agreement router handles empty sources, identical forecasts and opposing w
   const wind=adaptiveBlend({a:[0,10],b:[0,-10]},'wind_uv',1);
   assert.equal(wind.speed,0);assert.equal(wind.direction,null);
 });
-test('chat validates a session key before contacting the provider',async()=>{
-  await assert.rejects(answerChat({messages:[{role:'user',content:'Hello'}],apiKey:'invalid'}),/valid Groq API key/);
-  const result=await answerChat({messages:[{role:'user',content:'Hello'}],apiKey:'gsk_'+'a'.repeat(30)},{complete:async()=>({content:'Connected'})});
+test('chat rejects browser-supplied API keys',async()=>{
+  await assert.rejects(answerChat({messages:[{role:'user',content:'Hello'}],apiKey:'gsk_'+'a'.repeat(30)}),/Client-supplied API keys/);
+  const result=await answerChat({messages:[{role:'user',content:'Hello'}]},{complete:async()=>({content:'Connected'})});
   assert.equal(result.answer,'Connected');
 });

@@ -75,10 +75,9 @@ export async function executeTool(name, args) {
 }
 export async function answerChat(input, { complete } = {}) {
   if (!Array.isArray(input.messages) || input.messages.length<1 || input.messages.length>12 || input.messages.some(m=>!['user','assistant'].includes(m.role)||typeof m.content!=='string'||m.content.length>4000) || input.messages.reduce((n,m)=>n+m.content.length,0)>18000 || input.messages.at(-1).role!=='user') throw new ServiceError('Send a shorter conversation (up to 12 messages).',400);
-  const supplied=input.apiKey;
-  if(supplied!==undefined && (typeof supplied!=='string'||!/^gsk_[A-Za-z0-9_-]{20,240}$/.test(supplied)))throw new ServiceError('Enter a valid Groq API key beginning with gsk_.',400);
-  const key=supplied||groqKey();
-  if(!key && !complete) throw new ServiceError('The AI assistant is ready to connect. Add GROQ_API_KEY to .env.local and restart the server, or set it in Vercel environment variables.',503);
+  if(input.apiKey!==undefined)throw new ServiceError('Client-supplied API keys are not accepted.',400);
+  const key=groqKey();
+  if(!key && !complete) throw new ServiceError('The assistant is temporarily unavailable.',503);
   const page=input.context&&typeof input.context==='object'?input.context:{},context=JSON.stringify(page).slice(0,1500);
   let selectedEvidence=null,selectedError=null;
   if(['live forecasts','blend'].includes(page.view)&&Number.isFinite(page.coordinates?.latitude)&&Number.isFinite(page.coordinates?.longitude)){

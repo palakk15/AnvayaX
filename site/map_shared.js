@@ -4,6 +4,24 @@ export const fmt=v=>Number.isFinite(v)?v.toLocaleString('en-IN',{maximumFraction
 export const ist=t=>t?new Intl.DateTimeFormat('en-IN',{timeZone:'Asia/Kolkata',dateStyle:'medium',timeStyle:'short'}).format(new Date(t))+' IST':'Unavailable';
 export const read=url=>fetch(url,{signal:AbortSignal.timeout(60000)}).then(readJSON);
 export const table=(head,rows)=>`<div class="table-wrap"><table><thead><tr>${head.map(h=>`<th scope="col">${h}</th>`).join('')}</tr></thead><tbody>${rows.map(row=>`<tr>${row.map(v=>`<td>${v}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+export function kernelDensity(values,{domain}={}){
+  const xs=values.filter(Number.isFinite).sort((a,b)=>a-b),n=xs.length;
+  if(n<3)return null;
+  const q=p=>{const x=(n-1)*p,i=Math.floor(x);return xs[i]+(xs[Math.ceil(x)]-xs[i])*(x-i);};
+  const mean=xs.reduce((a,b)=>a+b,0)/n,sd=Math.sqrt(xs.reduce((sum,x)=>sum+(x-mean)**2,0)/n);
+  const bandwidth=Math.max(1e-4,.9*(Math.min(sd,(q(.75)-q(.25))/1.34)||sd||Math.max(1,Math.abs(mean))*.05)*n**(-.2));
+  const pad=Math.max(bandwidth*2,(xs.at(-1)-xs[0])*.12);
+  const lo=domain?.[0]??xs[0]-pad,hi=domain?.[1]??xs.at(-1)+pad;
+  const points=Array.from({length:81},(_,i)=>{const x=lo+(hi-lo)*i/80;return {x,density:xs.reduce((sum,v)=>sum+Math.exp(-.5*((x-v)/bandwidth)**2),0)/(n*bandwidth*Math.sqrt(2*Math.PI))};});
+  return {n,lo,hi,bandwidth,points,observations:xs};
+}
+export function kdeSVG(values,{label='Sample values',unit='',color='#167f8b',domain,displayScale=1}={}){
+  const data=kernelDensity(values,{domain});
+  if(!data)return '<p class="fineprint">At least three returned coordinates are needed for a density graph.</p>';
+  const max=Math.max(...data.points.map(p=>p.density)),px=x=>36+(x-data.lo)/(data.hi-data.lo)*488,py=y=>146-y/max*108;
+  const curve=data.points.map((p,i)=>`${i?'L':'M'}${px(p.x).toFixed(2)},${py(p.density).toFixed(2)}`).join(' '),area=`${curve} L524,146 L36,146 Z`;
+  return `<figure class="sample-kde"><figcaption><strong>${esc(label)}</strong><span>${data.n} returned coordinates · local sample distribution</span></figcaption><svg viewBox="0 0 560 185" role="img" aria-label="Kernel density of ${esc(label)} at ${data.n} retrieved coordinates"><path d="${area}" fill="${color}" opacity=".19"/><path d="${curve}" fill="none" stroke="${color}" stroke-width="3"/>${data.observations.map(x=>`<line x1="${px(x)}" x2="${px(x)}" y1="149" y2="158" stroke="${color}" opacity=".45"/>`).join('')}<text x="36" y="179">${fmt(data.lo*displayScale)} ${esc(unit)}</text><text x="280" y="179" text-anchor="middle">${fmt((data.lo+data.hi)/2*displayScale)} ${esc(unit)}</text><text x="524" y="179" text-anchor="end">${fmt(data.hi*displayScale)} ${esc(unit)}</text></svg><p class="fineprint">The curve summarizes values only where data was returned. Small ticks mark actual samples; it does not estimate other places.</p></figure>`;
+}
 export function indiaSampleGrid(geo){
   const insideRing=(ring,lon,lat)=>{let inside=false;for(let i=0,j=ring.length-1;i<ring.length;j=i++){const a=ring[i],b=ring[j];if((a[1]>lat)!==(b[1]>lat)&&lon<(b[0]-a[0])*(lat-a[1])/(b[1]-a[1])+a[0])inside=!inside;}return inside;};
   const inside=(lon,lat)=>geo.features.some(f=>{const polygons=f.geometry.type==='Polygon'?[f.geometry.coordinates]:f.geometry.coordinates;return polygons.some(poly=>insideRing(poly[0],lon,lat)&&!poly.slice(1).some(hole=>insideRing(hole,lon,lat)));});
@@ -25,7 +43,7 @@ export function mapSVG(geo,points,{color='#167f8b',shape='circle',zoom=1,center,
   const focus=points.find(p=>p.selected),[cx,cy]=center|| (focus?project([focus.longitude,focus.latitude]):[260,285]);
   const w=520/zoom,h=570/zoom,x=zoom===1?0:Math.max(0,Math.min(520-w,cx-w/2)),y=zoom===1?0:Math.max(0,Math.min(570-h,cy-h/2));
   const markers=points.map((p,i)=>{const [px,py]=project([p.longitude,p.latitude]),r=p.selected?9:6,fill=p.color||color,showLabel=p.selected||zoom>=2.2,tx=px+13;
-    return `<g tabindex="0" role="button" data-point="${i}" aria-label="${esc(p.label)}: ${esc(p.value)}"><title>${esc(p.label)}: ${esc(p.value)}</title><circle class="sample-halo" cx="${px}" cy="${py}" r="20" fill="url(#${idPrefix}-sample-${i})"/>${shape==='diamond'?`<path d="M${px},${py-r}l${r},${r}l-${r},${r}l-${r},-${r}Z"`:shape==='triangle'?`<path d="M${px},${py-r}l${r},${r*2}h-${r*2}Z"`:`<circle cx="${px}" cy="${py}" r="${r}"`} fill="${fill}" stroke="${p.selected?'#102f3d':'white'}" stroke-width="${p.selected?2.6:1.3}"/>${showLabel?`<text x="${tx}" y="${py-3}" class="map-city-label">${esc(p.label)}</text><text x="${tx}" y="${py+11}" class="map-number-label">${esc(p.value)}</text>`:''}</g>`;}).join('');
+    return `<g tabindex="0" role="button" data-point="${p.index??i}" aria-label="${esc(p.label)}: ${esc(p.value)}"><title>${esc(p.label)}: ${esc(p.value)}</title><circle class="sample-halo" cx="${px}" cy="${py}" r="20" fill="url(#${idPrefix}-sample-${i})"/>${shape==='diamond'?`<path d="M${px},${py-r}l${r},${r}l-${r},${r}l-${r},-${r}Z"`:shape==='triangle'?`<path d="M${px},${py-r}l${r},${r*2}h-${r*2}Z"`:`<circle cx="${px}" cy="${py}" r="${r}"`} fill="${fill}" stroke="${p.selected?'#102f3d':'white'}" stroke-width="${p.selected?2.6:1.3}"/>${showLabel?`<text x="${tx}" y="${py-3}" class="map-city-label">${esc(p.label)}</text><text x="${tx}" y="${py+11}" class="map-number-label">${esc(p.value)}</text>`:''}</g>`;}).join('');
   return `<div class="map-zoom"><button data-zoom="in" aria-label="Zoom in">Zoom in +</button><button data-zoom="out" aria-label="Zoom out">Zoom out −</button><button data-zoom="reset">Full map</button><span>Drag to pan · scroll to zoom</span></div><svg class="readable-map" viewBox="${x} ${y} ${w} ${h}" role="group" aria-label="Retrieved forecast samples across India. Select a marker to inspect; grey land is unsampled."><defs>${points.map((p,i)=>`<radialGradient id="${idPrefix}-sample-${i}"><stop offset="0" stop-color="${p.color||color}" stop-opacity=".52"/><stop offset=".55" stop-color="${p.color||color}" stop-opacity=".18"/><stop offset="1" stop-color="${p.color||color}" stop-opacity="0"/></radialGradient>`).join('')}</defs><path d="${path}" fill="#e0e8e4" stroke="#94a8a0" stroke-width=".8" fill-rule="evenodd"/>${markers}</svg><p class="fineprint">Soft circles mark retrieved coordinates. There are no estimates between points or verified skill scores. Grey land has no data. Boundary: <a href="https://github.com/datameet/maps/tree/master/Country">DataMeet</a>, CC BY 4.0; illustrative.</p>`;
 }
 export function bindMap(host,state,draw){
