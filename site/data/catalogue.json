@@ -28,7 +28,37 @@
       ],
       "access": "Public GRIB2; preserve cycle version, interval and publication timestamps.",
       "grid": "Select documented 0.25 degree delivery grid; delivery grid is not native resolution.",
-      "ensemble": false
+      "ensemble": false,
+      "provider": "NOAA / NCEP",
+      "architecture": "Physical atmosphere model with an FV3 dynamical core",
+      "description": "Global numerical guidance for surface and upper-air weather.",
+      "pros": [
+        "Public forecast access",
+        "Physical comparator for AI outputs"
+      ],
+      "cons": [
+        "Deterministic output needs probabilistic calibration",
+        "Grid and accumulation steps require decoding"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global coverage; a practical starting source for any of the six Indian sample cities.",
+        "season": "Use year-round as a physical reference; recalibrate separately for monsoon and dry seasons.",
+        "lead": "Useful short-to-medium-range candidate when its exact forecast cycle and lead are archived.",
+        "weather": "Synoptic rain, temperature and wind context; localized cloudbursts still need local verification.",
+        "analysis": "GFS supplies a physically simulated baseline. Its strength here is broad availability and a distinct modelling family, not a measured India advantage. Before weighting it, decode the exact accumulation window, grid and release time; then fit a lead-specific probability distribution against independent observations."
+      }
     },
     {
       "id": "gefs",
@@ -61,7 +91,37 @@
       "access": "Operational and GEFS v12 retrospective archives are separate.",
       "notes": [
         "GEFS v12 2000-2019 reforecasts have 5 daily members and an 11-member weekly extension, not operational member counts."
-      ]
+      ],
+      "provider": "NOAA / NCEP",
+      "architecture": "Perturbed physical forecast ensemble",
+      "description": "Multiple atmospheric forecasts represent uncertainty in initial conditions and model evolution.",
+      "pros": [
+        "Member spread supports uncertainty estimation",
+        "Retrospective product supports calibration studies"
+      ],
+      "cons": [
+        "Members share model errors",
+        "Retrospective and operational configurations differ"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global ensemble; compare members over the same Indian target point or grid cell.",
+        "season": "All seasons; inspect spread and rain reliability during the southwest monsoon separately.",
+        "lead": "Especially relevant where uncertainty grows with lead, provided matching member archives exist.",
+        "weather": "Alternative rain tracks and uncertain high-wind scenarios; shared member bias remains possible.",
+        "analysis": "GEFS contributes multiple plausible atmospheric trajectories instead of one value. Keep member identity, operational cycle and reforecast generation distinct. Member spread is useful information, but it is not automatically a calibrated event probability."
+      }
     },
     {
       "id": "ifs_control",
@@ -94,7 +154,37 @@
       "access": "Open-data control forecast; select type=cf and pin cycle. Older archives may need registration.",
       "notes": [
         "Control, HRES and ensemble products must not be silently interchanged."
-      ]
+      ],
+      "provider": "ECMWF",
+      "architecture": "Integrated Forecasting System numerical control forecast",
+      "description": "Control product from the physical IFS forecast system.",
+      "pros": [
+        "Independent provider comparison",
+        "Public GRIB products"
+      ],
+      "cons": [
+        "A control alone does not quantify uncertainty",
+        "Do not conflate open control with historical HRES"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global physical forecast, sampled at the target Indian location and compatible grid.",
+        "season": "Year-round comparator; coastal and monsoon biases must be measured locally.",
+        "lead": "Short-to-medium range after matching the historical control product and valid time.",
+        "weather": "Large-scale temperature, flow and rain structure; a single control cannot express full uncertainty.",
+        "analysis": "The IFS control is an independent physical-system comparison for public AI sources. Treat it as a specific product and cycle. Do not borrow skill claims from a different HRES generation or from IFS ENS."
+      }
     },
     {
       "id": "ifs_ens",
@@ -123,7 +213,37 @@
         "https://www.ecmwf.int/en/forecasts/datasets/open-data"
       ],
       "ensemble": true,
-      "access": "Open-data ensemble; archive coverage and member inventory must be audited."
+      "access": "Open-data ensemble; archive coverage and member inventory must be audited.",
+      "provider": "ECMWF",
+      "architecture": "Integrated Forecasting System ensemble",
+      "description": "Perturbed IFS forecast members for probabilistic guidance.",
+      "pros": [
+        "Enables event-frequency comparisons",
+        "Retains multiple weather scenarios"
+      ],
+      "cons": [
+        "Large archive and member bookkeeping",
+        "Local reliability still needs observation verification"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global ensemble guidance; locally verify the member distribution at Indian stations.",
+        "season": "All seasons, with monsoon and hot-season calibration checked separately.",
+        "lead": "Medium-range uncertainty candidate if the exact ensemble issue and lead are available.",
+        "weather": "Scenario spread for heavy rain, heat and wind; event tails need enough independent cases.",
+        "analysis": "IFS ENS offers a physical ensemble from a second major provider. Its value is a distribution of outcomes rather than one control path. The archive, terms, version and member count must match the period being evaluated."
+      }
     },
     {
       "id": "aifs_single",
@@ -155,7 +275,37 @@
       "ensemble": false,
       "notes": [
         "Version 2 implemented 2026-05-12. Native atmospheric resolution approximately 31 km; six-hour steps."
-      ]
+      ],
+      "provider": "ECMWF",
+      "architecture": "Graph-transformer AI forecasting system",
+      "description": "Learned deterministic global weather evolution; exact checkpoint is recorded separately.",
+      "pros": [
+        "AI and physics comparison from one provider",
+        "Published weights and model card"
+      ],
+      "cons": [
+        "One trajectory needs calibration for uncertainty",
+        "Shared initialization can correlate errors with IFS"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global AI forecast; Indian coastal and terrain-sensitive targets need point validation.",
+        "season": "Can be considered year-round; train and score monsoon and hot-season behavior separately.",
+        "lead": "Medium-range AI candidate at leads supported by its exact checkpoint and input cycle.",
+        "weather": "Broad atmospheric evolution and surface conditions; convective peaks need special checks.",
+        "analysis": "AIFS Single is a learned forecast trajectory, not a probabilistic ensemble. It is useful as an AI contrast to IFS, but both can share initialization information. Version, training cutoff and precipitation definition must be pinned before a fair blend."
+      }
     },
     {
       "id": "aifs_ens",
@@ -186,7 +336,37 @@
       "ensemble": true,
       "notes": [
         "Provider documents v2 from 2026-05-12 and ensemble archives from July 2025; this entry does not infer the v2 checkpoint training cutoff."
-      ]
+      ],
+      "provider": "ECMWF",
+      "architecture": "Probabilistic AI forecasting system",
+      "description": "Ensemble AI product; version and training cutoff must be independently pinned.",
+      "pros": [
+        "Probabilistic AI comparator",
+        "Multiple sampled trajectories"
+      ],
+      "cons": [
+        "Checkpoint-specific training boundary required",
+        "Do not transfer Single calibration to ENS"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global probabilistic AI source, subject to observed India-region coverage.",
+        "season": "Year-round candidate; separately check monsoon rainfall and heat-tail reliability.",
+        "lead": "Medium-range sampled trajectories where the versioned ensemble archive supports the lead.",
+        "weather": "Uncertain rain, temperature and wind regimes; do not transfer Single's calibration.",
+        "analysis": "AIFS ENS is a distinct product from AIFS Single. Keep the ensemble checkpoint and its members together. Its mixture role is to test whether sampled AI uncertainty adds information beyond physical ensembles, not to assume that more members imply better skill."
+      }
     },
     {
       "id": "graphcast_operational",
@@ -219,7 +399,37 @@
       "notes": [
         "NOAA documents six-hour precipitation totals and archive start January 2022.",
         "NOAA package versions and GFS/IFS initializations must be tracked separately from checkpoint identity."
-      ]
+      ],
+      "provider": "Google DeepMind; NOAA/CIRA archive",
+      "architecture": "Multiscale graph neural network",
+      "description": "Operational checkpoint maps atmospheric states through a multiscale mesh to future weather.",
+      "pros": [
+        "Named public checkpoint",
+        "Native precipitation in the NOAA archive"
+      ],
+      "cons": [
+        "Checkpoint and initialization both affect comparability",
+        "No local India skill established here"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global graph forecast; use Indian point or grid matching rather than assuming street-level detail.",
+        "season": "All-season candidate, with extreme monsoon rainfall as a separate verification stratum.",
+        "lead": "Medium-range atmospheric guidance, evaluated only on its documented cycle and lead support.",
+        "weather": "Large-scale monsoon flow and six-hour rain where the selected archive provides that field.",
+        "analysis": "GraphCast's graph architecture offers a different data-driven forecast family. NOAA/CIRA archive products can include six-hour precipitation, but the initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
+      }
     },
     {
       "id": "pangu_weather",
@@ -252,7 +462,37 @@
       "notes": [
         "No native precipitation field. A separately trained diagnostic pipeline would be a distinct source.",
         "NOAA documents reforecasts from October 2020; this is not a verified checkpoint cutoff. Weight licensing remains unverified here."
-      ]
+      ],
+      "provider": "Huawei research; NOAA/CIRA archive",
+      "architecture": "3D Earth-specific transformer",
+      "description": "Atmospheric forecasting architecture with hierarchical temporal prediction.",
+      "pros": [
+        "Different neural architecture for comparison",
+        "Public implementation and reforecast route"
+      ],
+      "cons": [
+        "No native precipitation field",
+        "Surface and pressure-level channels must be distinguished"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global atmospheric fields; use Indian surface/upper-air channels that actually exist.",
+        "season": "Year-round synoptic context; no seasonal local advantage is assumed.",
+        "lead": "Medium-range candidate after exact channel, cadence and archive checks.",
+        "weather": "Moisture transport and broad flow; the cited archive has no native rain field.",
+        "analysis": "Pangu-Weather's 3D transformer is useful for comparing how another AI architecture represents circulation. It should not enter a rainfall amount blend using a precipitation value it never outputs. A derived rainfall model would be a separately trained product."
+      }
     },
     {
       "id": "fourcastnet_v2_small",
@@ -278,12 +518,43 @@
       "archive_verified": false,
       "india_skill_metrics": null,
       "evidence_urls": [
-        "https://registry.opendata.aws/aiwp/"
+        "https://registry.opendata.aws/aiwp/",
+        "https://noaa-oar-mlwp-data.s3.amazonaws.com/README.txt"
       ],
       "ensemble": false,
       "notes": [
         "The NOAA v2-small variable inventory does not include precipitation. Do not transfer precipitation capability from FourCastNet v1 or another checkpoint."
-      ]
+      ],
+      "provider": "NVIDIA; NOAA/CIRA archive",
+      "architecture": "Spherical Fourier neural operator family",
+      "description": "Spectral neural weather model; this entry refers specifically to the NOAA v2-small product.",
+      "pros": [
+        "Alternative spectral representation",
+        "Public reforecast route for supported variables"
+      ],
+      "cons": [
+        "No native precipitation in this archive product",
+        "Do not borrow capabilities from v1 or v3"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global spectral forecast; match its coarse fields to the target Indian grid.",
+        "season": "All-season large-scale context; evaluate monsoon spectra and surface bias locally.",
+        "lead": "Medium-range research candidate only where v2-small reforecasts are available.",
+        "weather": "Broad temperature and wind patterns; no native rain in the cited v2-small archive.",
+        "analysis": "FourCastNet v2-small is a specific spherical neural-operator product. Its architecture adds model-family diversity, but version boundaries are crucial: capabilities from a different FourCastNet release cannot be copied into this profile."
+      }
     },
     {
       "id": "fourcastnet_3",
@@ -316,7 +587,37 @@
       "notes": [
         "The published model does not include a native precipitation output; the paper identifies it as future diagnostic work.",
         "Reported global benchmarks are not local India skill evidence."
-      ]
+      ],
+      "provider": "NVIDIA",
+      "architecture": "Stochastic spherical neural operator",
+      "description": "Probabilistic global weather model with sampled ensemble trajectories.",
+      "pros": [
+        "Open model card and weights",
+        "Designed for ensemble generation"
+      ],
+      "cons": [
+        "No native precipitation in the cited release",
+        "Requires its own input preprocessing and benchmark"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global sampled AI forecast; verify Indian surface targets against independent truth.",
+        "season": "Use across seasons only after product-specific calibration, including monsoon checks.",
+        "lead": "Medium-range probabilistic candidate at documented checkpoint leads.",
+        "weather": "Alternative global weather scenarios; the cited release does not supply native rain.",
+        "analysis": "FourCastNet 3 brings stochastic spectral modelling to the portfolio. It could test whether a different ensemble generator improves spread and reliability, but first establish the released variable inventory, checkpoint and input preprocessing."
+      }
     },
     {
       "id": "aurora_original",
@@ -349,7 +650,37 @@
       "ensemble": false,
       "notes": [
         "Original default weather surface channels are 2t, 10u, 10v and msl; no native rain channel."
-      ]
+      ],
+      "provider": "Microsoft Research",
+      "architecture": "Atmospheric foundation model / 3D transformer",
+      "description": "Original weather checkpoint with temperature, wind and pressure surface channels.",
+      "pros": [
+        "Reusable atmospheric representation",
+        "Public model implementation"
+      ],
+      "cons": [
+        "Original weather checkpoint has no native rainfall",
+        "Fine-tuned variants have different capabilities"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global foundation-model atmospheric state; point-scale Indian use needs down-selection.",
+        "season": "Potential all-season context; local seasonal biases have not been measured here.",
+        "lead": "Short-to-medium model-supported leads, not an unbounded long-range claim.",
+        "weather": "Temperature, wind and pressure context; original weather checkpoint has no native rain.",
+        "analysis": "Aurora's original checkpoint provides reusable atmospheric features, but its exact weather head determines usable targets. A rainfall fine-tune is not the same product. Treat each head and version as a separate candidate with its own evidence."
+      }
     },
     {
       "id": "aurora_1_5",
@@ -382,7 +713,37 @@
       "ensemble": false,
       "notes": [
         "July 2026 release adds precipitation and hourly output. Audit the precise checkpoint, accumulation metadata and cutoff before use."
-      ]
+      ],
+      "provider": "Microsoft Research",
+      "architecture": "Atmospheric foundation model, expanded output variant",
+      "description": "Version 1.5 expands the weather variable inventory and temporal output.",
+      "pros": [
+        "Precipitation-capable version",
+        "Public model catalogue"
+      ],
+      "cons": [
+        "Training cutoff needs exact checkpoint evidence",
+        "New fields require separate unit and interval audits"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global foundation-model variant, with Indian site verification still required.",
+        "season": "All seasons in principle; check monsoon rain and hot-season temperature separately.",
+        "lead": "At leads documented for the 1.5 checkpoint and its output cadence.",
+        "weather": "Broader variable inventory than the original Aurora weather checkpoint.",
+        "analysis": "Aurora 1.5 is a newer output variant, so its target fields and training boundary must be read from its own model card. It can be a useful AI candidate, but a model profile is not a downloaded run or a measured local skill result."
+      }
     },
     {
       "id": "aurora_1_5_ensemble",
@@ -411,7 +772,37 @@
         "https://microsoft.github.io/aurora/models.html",
         "https://huggingface.co/microsoft/aurora"
       ],
-      "ensemble": true
+      "ensemble": true,
+      "provider": "Microsoft Research",
+      "architecture": "Ensemble foundation-model variant",
+      "description": "Ensemble extension of Aurora 1.5; distinct from its deterministic product.",
+      "pros": [
+        "Supports probabilistic comparisons",
+        "Shared documented model family"
+      ],
+      "cons": [
+        "Member archive not integrated here",
+        "Do not reuse deterministic verification results"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global ensemble variant, conditional on obtaining consistent member forecasts.",
+        "season": "Potential year-round use, with independent seasonal reliability diagnostics.",
+        "lead": "Only the released ensemble's supported forecast horizon and cadence.",
+        "weather": "Scenario uncertainty for supported variables; do not borrow deterministic scores.",
+        "analysis": "The ensemble version tests whether Aurora's sampled spread carries information beyond the deterministic 1.5 forecast. Preserve member provenance and evaluate the ensemble as its own source, especially for rare-event tails."
+      }
     },
     {
       "id": "gencast",
@@ -444,7 +835,37 @@
       "notes": [
         "Research checkpoint is distinct from the Operational <2022 checkpoint.",
         "Native 12-hour rainfall totals must not be split into fabricated six-hour totals."
-      ]
+      ],
+      "provider": "Google DeepMind",
+      "architecture": "Conditional diffusion ensemble on a spherical mesh",
+      "description": "Generates sampled weather trajectories; this entry pins the research checkpoint.",
+      "pros": [
+        "Generative uncertainty representation",
+        "Explicit research checkpoint boundary"
+      ],
+      "cons": [
+        "Native twelve-hour totals must retain their windows",
+        "Research and operational checkpoints differ"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global generative ensemble; Indian hazard targets need matched spatial verification.",
+        "season": "All-season research candidate, with monsoon-tail calibration examined separately.",
+        "lead": "Medium-range sampled trajectories at the documented twelve-hour cadence.",
+        "weather": "Uncertain synoptic evolution and documented precipitation totals; preserve accumulation windows.",
+        "analysis": "GenCast samples multiple futures through a diffusion model. This makes it an uncertainty candidate, but its twelve-hour totals cannot be silently compared with hourly or daily observations. Use the exact checkpoint and issued inputs."
+      }
     },
     {
       "id": "weathernext_2",
@@ -476,7 +897,37 @@
       "ensemble": true,
       "notes": [
         "Released weights and commercial served data are different access routes and must not share assumed licensing or versions."
-      ]
+      ],
+      "provider": "Google DeepMind",
+      "architecture": "Functional generative network ensemble",
+      "description": "WeatherNext generation with open-weight and managed data access routes.",
+      "pros": [
+        "Sampled ensemble trajectories",
+        "Published code and checkpoint route"
+      ],
+      "cons": [
+        "Managed feeds and weights have distinct terms",
+        "Archive entitlement is not implied by a model card"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global generated scenarios; evaluate at Indian stations and matched grids.",
+        "season": "Potential all-season source; separate seasonal verification is mandatory.",
+        "lead": "Medium-range product-specific leads and update schedule.",
+        "weather": "Broad probabilistic weather scenarios where the released field inventory supports them.",
+        "analysis": "WeatherNext 2 represents a generative AI family with managed and open-weight access routes. Those routes may differ in terms and historical availability. Keep the product, fields and checkpoint explicit before assigning it any operational weight."
+      }
     },
     {
       "id": "weathernext_3",
@@ -509,7 +960,37 @@
       "ensemble": true,
       "notes": [
         "Provider describes hourly initializations, variable-dependent resolution and 15-day ensembles. Exact fields, account access, cutoff and historical availability need audit."
-      ]
+      ],
+      "provider": "Google DeepMind",
+      "architecture": "Managed AI ensemble product",
+      "description": "Provider weather product with product-dependent delivery and spatial resolution.",
+      "pros": [
+        "Frequent provider updates",
+        "Multiple forecast scenarios"
+      ],
+      "cons": [
+        "No local checkpoint is installed here",
+        "Account, exact fields and historical access require verification"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global managed product; India coverage and point meaning require provider confirmation.",
+        "season": "Do not infer monsoon superiority from global product availability.",
+        "lead": "Only provider-documented lead, cadence and historical replay support.",
+        "weather": "Potential multi-scenario guidance for supported weather fields.",
+        "analysis": "WeatherNext 3 is recorded as a managed candidate. An account endpoint is not a local checkpoint, and product terms or historical archives can change. Treat this as an integration hypothesis until access, variables and issue-time metadata are verified."
+      }
     },
     {
       "id": "neuralgcm_standard",
@@ -542,7 +1023,37 @@
       "notes": [
         "Standard checkpoints do not directly predict precipitation. Atmospheric temperature/wind are not automatically canonical 2m temperature/10m wind.",
         "External ocean forcing and any surface diagnostic pipeline must be documented."
-      ]
+      ],
+      "provider": "Google Research / NeuralGCM",
+      "architecture": "Differentiable dynamics plus learned physical parameterizations",
+      "description": "Hybrid general circulation model; standard checkpoint emphasizes atmospheric state evolution.",
+      "pros": [
+        "Physics and learning in one model",
+        "Useful hybrid research comparator"
+      ],
+      "cons": [
+        "No direct precipitation for standard checkpoint",
+        "Atmospheric levels do not imply 2 m / 10 m diagnostics"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global coupled dynamics; Indian surface targets may need separate diagnostics.",
+        "season": "All-season circulation context, with monsoon structure evaluated explicitly.",
+        "lead": "Medium-range and climate research contexts, depending on the exact checkpoint.",
+        "weather": "Large-scale flow and moisture budget; default checkpoint is not a rain-gauge forecast.",
+        "analysis": "NeuralGCM couples a differentiable dynamical core with learned physics. It is scientifically valuable as a hybrid comparator, but precipitation-minus-evaporation or atmospheric state is not interchangeable with local 24-hour rainfall."
+      }
     },
     {
       "id": "neuralgcm_precipitation",
@@ -576,7 +1087,37 @@
       "notes": [
         "Precipitation-specific checkpoint; documented cumulative precipitation is intended for intervals of at least six hours.",
         "Any rate integration must be explicit and retain interval endpoints."
-      ]
+      ],
+      "provider": "Google Research / NeuralGCM",
+      "architecture": "Hybrid dynamics with precipitation-specific learned components",
+      "description": "Coarse stochastic precipitation checkpoint, distinct from standard NeuralGCM.",
+      "pros": [
+        "Precipitation-specific hybrid comparison",
+        "Ensemble research capability"
+      ],
+      "cons": [
+        "2.8-degree product is coarse for local India work",
+        "Accumulate only over documented intervals"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global coarse precipitation checkpoint; insufficient alone for Mumbai street-level detail.",
+        "season": "Monsoon rain is a useful research test, but local reliability must be measured.",
+        "lead": "At the checkpoint's documented stochastic forecast cadence.",
+        "weather": "Broad precipitation regimes; keep its coarse grid and target definition visible.",
+        "analysis": "This precipitation-specific NeuralGCM checkpoint is separate from the standard atmospheric version. Its coarse rain output could serve as a large-scale probabilistic expert after grid, accumulation and licensing audits."
+      }
     },
     {
       "id": "ncum_global",
@@ -610,7 +1151,37 @@
       "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
       "notes": [
         "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
-      ]
+      ],
+      "provider": "NCMRWF",
+      "architecture": "Global Unified Model numerical forecasting",
+      "description": "India-provider global physical guidance; current configuration needs provider confirmation.",
+      "pros": [
+        "India-provider operational context",
+        "Useful independent candidate"
+      ],
+      "cons": [
+        "Machine-readable archive access unverified",
+        "Historical resolution is not current configuration evidence"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Provider page available; current technical details not extractable in this review",
+      "use_context": {
+        "region": "India-provider global guidance, if an as-issued NCMRWF archive is authorized.",
+        "season": "Especially relevant for an India seasonal comparison; skill is not assumed.",
+        "lead": "Operational lead support depends on the actual NCUM cycle and archived version.",
+        "weather": "Physical synoptic and surface guidance for monsoon and non-monsoon events.",
+        "analysis": "NCUM global would add a national operational physical source. Historical configuration numbers cannot stand in for the current system, and access to a usable forecast archive is a prerequisite for fitting any weight."
+      }
     },
     {
       "id": "ncum_regional",
@@ -644,7 +1215,37 @@
       "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
       "notes": [
         "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
-      ]
+      ],
+      "provider": "NCMRWF",
+      "architecture": "Regional Unified Model numerical forecasting",
+      "description": "Regional physical guidance with a configured limited-area domain.",
+      "pros": [
+        "Regional-domain candidate",
+        "Potential terrain-sensitive comparison"
+      ],
+      "cons": [
+        "Boundary conditions influence results",
+        "Provider archive and licensing not connected"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Provider page available; current technical details not extractable in this review",
+      "use_context": {
+        "region": "Regional India domain; exact domain must include the forecast site.",
+        "season": "Coastal and orographic monsoon evaluation is a strong pilot use case.",
+        "lead": "Shorter regional leads with boundary-condition and spin-up checks.",
+        "weather": "Terrain-influenced rain and wind structure, subject to physics-scheme bias.",
+        "analysis": "A regional physical model can resolve more local structure than a coarse global source, but its boundary forcing, grid and microphysics can shift rain maxima. It earns a blending role only after matched local verification."
+      }
     },
     {
       "id": "neps_global",
@@ -678,7 +1279,37 @@
       "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
       "notes": [
         "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
-      ]
+      ],
+      "provider": "NCMRWF",
+      "architecture": "Global ensemble prediction system",
+      "description": "Global ensemble candidate associated with NCMRWF numerical guidance.",
+      "pros": [
+        "India-provider ensemble comparison",
+        "Members can represent scenario spread"
+      ],
+      "cons": [
+        "Current member count and cycle unverified",
+        "No matched archive loaded"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Provider page available; current technical details not extractable in this review",
+      "use_context": {
+        "region": "India-provider global ensemble, contingent on member-level data access.",
+        "season": "Monsoon versus non-monsoon calibration should be reported separately.",
+        "lead": "Medium-range uncertainty candidate at versioned operational leads.",
+        "weather": "Large-scale rain, heat and wind uncertainty from physical perturbations.",
+        "analysis": "NEPS global could diversify the ensemble portfolio with an India-provider system. Preserve each member and cycle; the present catalogue does not verify member count, public archive access or local skill."
+      }
     },
     {
       "id": "neps_regional",
@@ -712,7 +1343,37 @@
       "access": "Provider charts do not establish permission or availability of machine-readable forecast archives.",
       "notes": [
         "The cited configuration is historical. Current grid, cycles, members, license and archive remain unverified."
-      ]
+      ],
+      "provider": "NCMRWF",
+      "architecture": "Regional ensemble prediction system",
+      "description": "Limited-area ensemble candidate; exact setup is a provider-specific product.",
+      "pros": [
+        "Regional probabilistic research option",
+        "Supports member-based comparisons if acquired"
+      ],
+      "cons": [
+        "Domain and boundary version must be pinned",
+        "No public archive entitlement assumed"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Provider page available; current technical details not extractable in this review",
+      "use_context": {
+        "region": "Limited-area ensemble; check that every target lies within its configured domain.",
+        "season": "Western Ghats and coastal monsoon episodes are a motivating evaluation stratum.",
+        "lead": "Short-range regional uncertainty, subject to lateral boundaries and spin-up.",
+        "weather": "Possible convection-scale rain scenarios; wet bias and displacement need testing.",
+        "analysis": "NEPS regional is a promising physical ensemble candidate for local hazards. Its fine grid is not evidence that city-scale extremes are already accurate. A member archive and nearby gauge/radar observations are needed before training."
+      }
     },
     {
       "id": "laxmi",
@@ -746,7 +1407,37 @@
         "September 2026 preprint describes an AIFS-CRPS graph-transformer retrained with IMERG precipitation, evaluated at approximately 0.25 degrees.",
         "The paper's global and India tropical-storm results are not this project's measured skill. Weights, data access, license and checkpoint cutoff remain unverified.",
         "The paper states that real-time use requires additional adaptation to operational initial conditions."
-      ]
+      ],
+      "provider": "Authors of arXiv:2609.03210",
+      "architecture": "Observation-trained AIFS-CRPS graph-transformer research model",
+      "description": "Research precipitation model using observation-based rainfall training targets.",
+      "pros": [
+        "Addresses precipitation training-target quality",
+        "Relevant rainfall research hypothesis"
+      ],
+      "cons": [
+        "Downloadable checkpoint access unverified",
+        "Paper results are not this application’s measured performance"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Global AI precipitation research with Indian monsoon relevance to test.",
+        "season": "Monsoon rainfall is the main scientific motivation, not a guaranteed local gain.",
+        "lead": "Only checkpoint-supported medium-range precipitation intervals.",
+        "weather": "Rain occurrence and intensity where observation-trained targets are documented.",
+        "analysis": "LAXMI studies whether better precipitation targets improve AI rain forecasts. A paper result cannot be substituted for an obtainable checkpoint and matched Mumbai hindcast. Treat availability and exact output interval as open integration questions."
+      }
     },
     {
       "id": "jua_ept_2",
@@ -779,7 +1470,37 @@
       "notes": [
         "EPT-2 deterministic and EPT-2e ensemble are distinct products.",
         "Wind speed/direction require an explicit documented conversion before canonical wind_uv ingestion. Rainfall entitlement/field availability remains unverified here."
-      ]
+      ],
+      "provider": "Jua",
+      "architecture": "Commercial Earth-system AI forecast product",
+      "description": "EPT-2 deterministic forecast service; EPT-2e is a separate ensemble offering.",
+      "pros": [
+        "Provider-supported delivery option",
+        "Documented product API"
+      ],
+      "cons": [
+        "Subscription and field entitlements apply",
+        "Wind speed/direction need explicit vector conversion"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Provider-served domain; Indian availability must be confirmed contractually.",
+        "season": "Local monsoon and heat behavior cannot be inferred from another region's benchmark.",
+        "lead": "Use only licensed endpoint leads and variables once documented.",
+        "weather": "Surface temperature and wind comparison if the contracted API returns those fields.",
+        "analysis": "EPT-2 is a commercial service candidate, not an open checkpoint in this workspace. Its claimed strengths need product-specific, India-specific verification and cost/access review before it can join an operational blend."
+      }
     },
     {
       "id": "wrf",
@@ -805,12 +1526,42 @@
       "archive_verified": false,
       "india_skill_metrics": null,
       "evidence_urls": [
-        "https://www2.mmm.ucar.edu/wrf/site/users_guide/"
+        "https://www2.mmm.ucar.edu/wrf/site/documentation/users_guide/overview.html"
       ],
       "ensemble": null,
       "notes": [
         "WRF is configurable software, not a ready-to-ingest archive. Register domain, physics, model release and driving data as one reproducible pipeline."
-      ]
+      ],
+      "provider": "NCAR / WRF community",
+      "architecture": "Configurable regional numerical weather model",
+      "description": "Software pipeline requiring domain, physics, initial state and boundary conditions.",
+      "pros": [
+        "Explicit domain and physics choices",
+        "Regional experiment control"
+      ],
+      "cons": [
+        "Compute and configuration burden",
+        "Software installation is not a forecast archive"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Configured regional model run needed",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "A configured regional domain, such as Maharashtra, built by the operator.",
+        "season": "Can target monsoon physics, but configuration and observational testing are essential.",
+        "lead": "Short-range mesoscale runs with spin-up and boundary timing managed explicitly.",
+        "weather": "Orographic rain, urban/coastal wind and convective detail with physics uncertainty.",
+        "analysis": "WRF is software for running a dynamical regional forecast, not a ready-made source feed. Every domain, land-surface and microphysics choice affects output. A WRF expert needs repeatable runs, an archive and independent local verification."
+      }
     },
     {
       "id": "aifs_wrf",
@@ -836,14 +1587,44 @@
       "archive_verified": false,
       "india_skill_metrics": null,
       "evidence_urls": [
-        "https://www2.mmm.ucar.edu/wrf/site/users_guide/",
-        "https://www.ecmwf.int/en/forecasts/datasets/aifs-machine-learning-data"
+        "https://www.ecmwf.int/en/forecasts/datasets/aifs-machine-learning-data",
+        "https://www2.mmm.ucar.edu/wrf/site/documentation/users_guide/overview.html"
       ],
       "ensemble": null,
       "notes": [
         "A proposed pipeline, not a documented operational source. Compatibility, derived fields and skill are not established.",
         "Record both AIFS and WRF versions and propagate the driving checkpoint training cutoff."
-      ]
+      ],
+      "provider": "Proposed BharatBlend research integration",
+      "architecture": "AIFS boundary forcing into configured WRF",
+      "description": "Proposed coupling experiment; no operational source or completed integration exists here.",
+      "pros": [
+        "Testable AI-to-regional-physics hypothesis",
+        "Can isolate boundary-forcing choices in an experiment"
+      ],
+      "cons": [
+        "Required boundary-field completeness unproven",
+        "No measured skill or working coupled run"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Configured regional model run needed",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Proposed regional WRF domain driven by documented global AIFS boundary fields.",
+        "season": "Monsoon storms are a test case; no coupled India result exists here.",
+        "lead": "Short regional leads after boundary updates and spin-up.",
+        "weather": "Tests whether AI large-scale forcing helps local wind and rain physics.",
+        "analysis": "This is a proposed coupling experiment. It is not an installed forecast. Boundary-field completeness, physical consistency, microphysics bias and cost must all be evaluated before comparing it with raw AIFS or WRF."
+      }
     },
     {
       "id": "corrdiff",
@@ -875,7 +1656,37 @@
       "notes": [
         "Conditional regional downscaler, not an independent global forecaster.",
         "Capability, license and domain depend on the selected checkpoint; the demonstration domain must not be assumed valid for India."
-      ]
+      ],
+      "provider": "NVIDIA",
+      "architecture": "Conditional diffusion regional downscaler",
+      "description": "Generates regional fine-scale fields conditioned on coarser weather information.",
+      "pros": [
+        "Stochastic downscaling framework",
+        "Potential resolution-refinement experiment"
+      ],
+      "cons": [
+        "Not an independent global forecaster",
+        "Checkpoint domain cannot be assumed to transfer to India"
+      ],
+      "assessment_basis": "Engineering assessment of integration suitability; not a measured skill ranking.",
+      "local_inference_installed": false,
+      "compute_profile": "Provider outputs can be ingested without running the upstream model locally",
+      "hardware_requirements": "Exact checkpoint memory, runtime and throughput have not been measured here.",
+      "integration_requirements": [
+        "Pin product version and initialization source",
+        "Match variable, units, target interval and location",
+        "Record original availability time",
+        "Audit training cutoff and chronological evaluation",
+        "Calibrate on matched observations before promotion"
+      ],
+      "reference_review": "Primary provider or author reference reviewed",
+      "use_context": {
+        "region": "Only domains with a locally trained paired coarse/fine dataset; Mumbai is not supplied here.",
+        "season": "A monsoon downscaler would need monsoon-rich paired training and independent storms.",
+        "lead": "Inherits the forecast lead from its coarse conditioning model.",
+        "weather": "Can sample plausible local texture, but cannot repair a wrong large-scale storm track.",
+        "analysis": "CorrDiff is a conditional downscaler, not an independent global weather forecast. Treat generated fine detail as uncertain scenarios. A Mumbai deployment would require paired high-resolution observations, conditioning data and neighborhood verification to avoid convincing but misplaced extremes."
+      }
     }
   ],
   "datasets": [
@@ -907,7 +1718,20 @@
       "constraints": [
         "Pin model cycle and parse GRIB step metadata.",
         "Do not assume a recent rolling mirror contains a multi-year historical archive."
-      ]
+      ],
+      "description": "Issued physical-model forecasts",
+      "coverage": "Global; selected GRIB delivery grid",
+      "project_role": "Operational comparison and future calibrated expert",
+      "endpoint": "https://noaa-gfs-bdp-pds.s3.amazonaws.com/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "noaa_gefs",
@@ -937,7 +1761,20 @@
       "constraints": [
         "Preserve every retained member and its identity.",
         "Operational archive completeness is unverified."
-      ]
+      ],
+      "description": "Issued ensemble forecasts",
+      "coverage": "Global; grid varies by file and lead",
+      "project_role": "Member-level probability and spread evaluation",
+      "endpoint": "https://noaa-gefs-pds.s3.amazonaws.com/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "noaa_gefs_v12_reforecast",
@@ -968,7 +1805,20 @@
       "constraints": [
         "Daily 00 UTC: 5 members; weekly extension: 11 members.",
         "Not interchangeable with operational GEFS or with the post-2021 GraphCast evaluation period."
-      ]
+      ],
+      "description": "Retrospective ensemble experiments",
+      "coverage": "Global, 2000–2019 product",
+      "project_role": "Version-consistent calibration research",
+      "endpoint": "https://noaa-gefs-retrospective.s3.amazonaws.com/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "noaa_aiwp",
@@ -1006,7 +1856,20 @@
         "Only GraphCast has native rainfall in this archive.",
         "Keep GFS and IFS initializations distinct; inspect object names and metadata.",
         "Provider explicitly warns that records can be missing."
-      ]
+      ],
+      "description": "AI model reforecasts",
+      "coverage": "Global; inspect each NetCDF object",
+      "project_role": "AI/NWP matched archive research",
+      "endpoint": "https://noaa-oar-mlwp-data.s3.amazonaws.com/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "ecmwf_open",
@@ -1038,7 +1901,20 @@
       "constraints": [
         "Verify timestamp-specific product and model cycle.",
         "Rainfall step semantics must be decoded before canonical ingestion."
-      ]
+      ],
+      "description": "Issued IFS / AIFS forecasts",
+      "coverage": "Global, product-specific GRIB grids",
+      "project_role": "Independent physical and AI comparisons",
+      "endpoint": "https://data.ecmwf.int/forecasts/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "imd_daily_rainfall",
@@ -1064,7 +1940,20 @@
         "Retain the published daily accumulation window including its UTC offset; do not assume midnight UTC.",
         "A daily total cannot verify individual six-hour intervals.",
         "Record missing-value masks, processing version and publication/revision time."
-      ]
+      ],
+      "description": "Gauge-derived daily precipitation analysis",
+      "coverage": "India, 0.25-degree grid",
+      "project_role": "Daily rainfall verification with matching accumulation windows",
+      "endpoint": null,
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Page could not be retrieved in this review; reference retained"
     },
     {
       "id": "imerg_early",
@@ -1092,7 +1981,20 @@
         "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
         "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
         "Final/reprocessed data must not be used as if available at the original forecast issue time."
-      ]
+      ],
+      "description": "Satellite precipitation retrieval",
+      "coverage": "Global half-hourly estimates",
+      "project_role": "Lower-latency rainfall monitoring; preserve retrieval uncertainty",
+      "endpoint": null,
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "imerg_late",
@@ -1120,7 +2022,20 @@
         "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
         "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
         "Final/reprocessed data must not be used as if available at the original forecast issue time."
-      ]
+      ],
+      "description": "Satellite precipitation retrieval",
+      "coverage": "Global half-hourly estimates",
+      "project_role": "Delayed monitoring with more input availability",
+      "endpoint": null,
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "imerg_final",
@@ -1148,7 +2063,20 @@
         "Store Early/Late/Final and product version in observation_id or a sidecar manifest.",
         "Integrate rainfall rates over their actual intervals; preserve quality flags and missing coverage.",
         "Final/reprocessed data must not be used as if available at the original forecast issue time."
-      ]
+      ],
+      "description": "Retrospective satellite/gauge-adjusted precipitation",
+      "coverage": "Global half-hourly estimates",
+      "project_role": "Retrospective rainfall verification; release time matters",
+      "endpoint": null,
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "noaa_isd",
@@ -1176,7 +2104,20 @@
         "Respect station QC flags and missing codes; precipitation intervals vary.",
         "Convert meteorological wind direction and speed to u/v explicitly.",
         "Daily extrema are not instantaneous temperatures or instantaneous gust values."
-      ]
+      ],
+      "description": "Quality-flagged station observations",
+      "coverage": "Individual stations; audit India coverage",
+      "project_role": "Independent temperature and wind checks at supported stations",
+      "endpoint": "https://www.ncei.noaa.gov/data/global-hourly/access/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "imd_stations",
@@ -1202,7 +2143,20 @@
       "constraints": [
         "Do not infer a public machine-readable archive from station charts.",
         "Document station relocations, altitude, instrument/QC and publication time."
-      ]
+      ],
+      "description": "Provider station observations",
+      "coverage": "India stations and product-specific coverage",
+      "project_role": "Independent local verification after access and QC review",
+      "endpoint": "https://dsp.imdpune.gov.in/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
     },
     {
       "id": "era5",
@@ -1228,7 +2182,67 @@
         "Reanalysis is model-assisted and is not independent gauge/station ground truth.",
         "Several AI models were trained on ERA5: holdout periods must follow their training cutoff.",
         "Use only timestamp-available fields as features; revised analyses cannot be historical operational inputs."
-      ]
+      ],
+      "description": "Model-assisted reanalysis",
+      "coverage": "Global historical atmospheric reconstruction",
+      "project_role": "Secondary reference and training context; not independent station truth",
+      "endpoint": "https://cds.climate.copernicus.eu/",
+      "local_status": "Reference catalogue; not a matched training archive",
+      "quality_checks": [
+        "Missing values and QC flags",
+        "Units and accumulation start/end",
+        "Location/station identity and spatial support",
+        "Publication/revision timestamp",
+        "Version, checksum and licence provenance"
+      ],
+      "reference_review": "Primary provider reference reviewed"
+    },
+    {
+      "id": "open_meteo_named_models",
+      "name": "Open-Meteo named-model forecast API",
+      "kind": "forecast",
+      "description": "Provider-served NOAA GFS, ECMWF IFS and AIFS model forecasts.",
+      "coverage": "Selected Indian cities; three days of hourly provider output",
+      "project_role": "Public forecast explorer; not input to the existing trained gate",
+      "variables": [
+        "temperature_2m",
+        "precipitation",
+        "wind_speed_10m",
+        "wind_direction_10m"
+      ],
+      "source_ids": [
+        "gfs",
+        "ifs_control",
+        "aifs_single"
+      ],
+      "format": "JSON",
+      "access": "Named-model HTTP GET; free endpoint for eligible non-commercial use",
+      "endpoint": "https://api.open-meteo.com/v1/forecast",
+      "evidence_urls": [
+        "https://open-meteo.com/en/docs",
+        "https://open-meteo.com/en/docs/gfs-api",
+        "https://open-meteo.com/en/docs/ecmwf-api",
+        "https://open-meteo.com/en/terms"
+      ],
+      "data_license": "CC BY 4.0 attribution; API access subject to provider plan terms",
+      "local_status": "Adapter implemented; individual download receipts establish retrieval evidence",
+      "access_verified": true,
+      "archive_verified": false,
+      "quality_audited": false,
+      "constraints": [
+        "Latest series does not pin a single initialization or checkpoint",
+        "Hourly values may be interpolated and elevation-adjusted",
+        "Total precipitation includes rain, showers and snow water equivalent",
+        "Not station observations and not a calibrated blended forecast"
+      ],
+      "quality_checks": [
+        "Response size bound",
+        "Exact requested model fields and units",
+        "UTC contiguous timestamps",
+        "Finite values and missing-value preservation",
+        "SHA-256 receipt"
+      ],
+      "reference_review": "Documentation reviewed and Delhi HTTP request verified on 2026-09-26"
     }
   ]
 }

@@ -1,0 +1,191 @@
+{
+  "gfs": {
+    "region": "Global coverage; a practical starting source for any of the six Indian sample cities.",
+    "season": "Use year-round as a physical reference; recalibrate separately for monsoon and dry seasons.",
+    "lead": "Useful short-to-medium-range candidate when its exact forecast cycle and lead are archived.",
+    "weather": "Synoptic rain, temperature and wind context; localized cloudbursts still need local verification.",
+    "analysis": "GFS supplies a physically simulated baseline. Its strength here is broad availability and a distinct modelling family, not a measured India advantage. Before weighting it, decode the exact accumulation window, grid and release time; then fit a lead-specific probability distribution against independent observations."
+  },
+  "gefs": {
+    "region": "Global ensemble; compare members over the same Indian target point or grid cell.",
+    "season": "All seasons; inspect spread and rain reliability during the southwest monsoon separately.",
+    "lead": "Especially relevant where uncertainty grows with lead, provided matching member archives exist.",
+    "weather": "Alternative rain tracks and uncertain high-wind scenarios; shared member bias remains possible.",
+    "analysis": "GEFS contributes multiple plausible atmospheric trajectories instead of one value. Keep member identity, operational cycle and reforecast generation distinct. Member spread is useful information, but it is not automatically a calibrated event probability."
+  },
+  "ifs_control": {
+    "region": "Global physical forecast, sampled at the target Indian location and compatible grid.",
+    "season": "Year-round comparator; coastal and monsoon biases must be measured locally.",
+    "lead": "Short-to-medium range after matching the historical control product and valid time.",
+    "weather": "Large-scale temperature, flow and rain structure; a single control cannot express full uncertainty.",
+    "analysis": "The IFS control is an independent physical-system comparison for public AI sources. Treat it as a specific product and cycle. Do not borrow skill claims from a different HRES generation or from IFS ENS."
+  },
+  "ifs_ens": {
+    "region": "Global ensemble guidance; locally verify the member distribution at Indian stations.",
+    "season": "All seasons, with monsoon and hot-season calibration checked separately.",
+    "lead": "Medium-range uncertainty candidate if the exact ensemble issue and lead are available.",
+    "weather": "Scenario spread for heavy rain, heat and wind; event tails need enough independent cases.",
+    "analysis": "IFS ENS offers a physical ensemble from a second major provider. Its value is a distribution of outcomes rather than one control path. The archive, terms, version and member count must match the period being evaluated."
+  },
+  "aifs_single": {
+    "region": "Global AI forecast; Indian coastal and terrain-sensitive targets need point validation.",
+    "season": "Can be considered year-round; train and score monsoon and hot-season behavior separately.",
+    "lead": "Medium-range AI candidate at leads supported by its exact checkpoint and input cycle.",
+    "weather": "Broad atmospheric evolution and surface conditions; convective peaks need special checks.",
+    "analysis": "AIFS Single is a learned forecast trajectory, not a probabilistic ensemble. It is useful as an AI contrast to IFS, but both can share initialization information. Version, training cutoff and precipitation definition must be pinned before a fair blend."
+  },
+  "aifs_ens": {
+    "region": "Global probabilistic AI source, subject to observed India-region coverage.",
+    "season": "Year-round candidate; separately check monsoon rainfall and heat-tail reliability.",
+    "lead": "Medium-range sampled trajectories where the versioned ensemble archive supports the lead.",
+    "weather": "Uncertain rain, temperature and wind regimes; do not transfer Single's calibration.",
+    "analysis": "AIFS ENS is a distinct product from AIFS Single. Keep the ensemble checkpoint and its members together. Its mixture role is to test whether sampled AI uncertainty adds information beyond physical ensembles, not to assume that more members imply better skill."
+  },
+  "graphcast_operational": {
+    "region": "Global graph forecast; use Indian point or grid matching rather than assuming street-level detail.",
+    "season": "All-season candidate, with extreme monsoon rainfall as a separate verification stratum.",
+    "lead": "Medium-range atmospheric guidance, evaluated only on its documented cycle and lead support.",
+    "weather": "Large-scale monsoon flow and six-hour rain where the selected archive provides that field.",
+    "analysis": "GraphCast's graph architecture offers a different data-driven forecast family. NOAA/CIRA archive products can include six-hour precipitation, but the initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
+  },
+  "pangu_weather": {
+    "region": "Global atmospheric fields; use Indian surface/upper-air channels that actually exist.",
+    "season": "Year-round synoptic context; no seasonal local advantage is assumed.",
+    "lead": "Medium-range candidate after exact channel, cadence and archive checks.",
+    "weather": "Moisture transport and broad flow; the cited archive has no native rain field.",
+    "analysis": "Pangu-Weather's 3D transformer is useful for comparing how another AI architecture represents circulation. It should not enter a rainfall amount blend using a precipitation value it never outputs. A derived rainfall model would be a separately trained product."
+  },
+  "fourcastnet_v2_small": {
+    "region": "Global spectral forecast; match its coarse fields to the target Indian grid.",
+    "season": "All-season large-scale context; evaluate monsoon spectra and surface bias locally.",
+    "lead": "Medium-range research candidate only where v2-small reforecasts are available.",
+    "weather": "Broad temperature and wind patterns; no native rain in the cited v2-small archive.",
+    "analysis": "FourCastNet v2-small is a specific spherical neural-operator product. Its architecture adds model-family diversity, but version boundaries are crucial: capabilities from a different FourCastNet release cannot be copied into this profile."
+  },
+  "fourcastnet_3": {
+    "region": "Global sampled AI forecast; verify Indian surface targets against independent truth.",
+    "season": "Use across seasons only after product-specific calibration, including monsoon checks.",
+    "lead": "Medium-range probabilistic candidate at documented checkpoint leads.",
+    "weather": "Alternative global weather scenarios; the cited release does not supply native rain.",
+    "analysis": "FourCastNet 3 brings stochastic spectral modelling to the portfolio. It could test whether a different ensemble generator improves spread and reliability, but first establish the released variable inventory, checkpoint and input preprocessing."
+  },
+  "aurora_original": {
+    "region": "Global foundation-model atmospheric state; point-scale Indian use needs down-selection.",
+    "season": "Potential all-season context; local seasonal biases have not been measured here.",
+    "lead": "Short-to-medium model-supported leads, not an unbounded long-range claim.",
+    "weather": "Temperature, wind and pressure context; original weather checkpoint has no native rain.",
+    "analysis": "Aurora's original checkpoint provides reusable atmospheric features, but its exact weather head determines usable targets. A rainfall fine-tune is not the same product. Treat each head and version as a separate candidate with its own evidence."
+  },
+  "aurora_1_5": {
+    "region": "Global foundation-model variant, with Indian site verification still required.",
+    "season": "All seasons in principle; check monsoon rain and hot-season temperature separately.",
+    "lead": "At leads documented for the 1.5 checkpoint and its output cadence.",
+    "weather": "Broader variable inventory than the original Aurora weather checkpoint.",
+    "analysis": "Aurora 1.5 is a newer output variant, so its target fields and training boundary must be read from its own model card. It can be a useful AI candidate, but a model profile is not a downloaded run or a measured local skill result."
+  },
+  "aurora_1_5_ensemble": {
+    "region": "Global ensemble variant, conditional on obtaining consistent member forecasts.",
+    "season": "Potential year-round use, with independent seasonal reliability diagnostics.",
+    "lead": "Only the released ensemble's supported forecast horizon and cadence.",
+    "weather": "Scenario uncertainty for supported variables; do not borrow deterministic scores.",
+    "analysis": "The ensemble version tests whether Aurora's sampled spread carries information beyond the deterministic 1.5 forecast. Preserve member provenance and evaluate the ensemble as its own source, especially for rare-event tails."
+  },
+  "gencast": {
+    "region": "Global generative ensemble; Indian hazard targets need matched spatial verification.",
+    "season": "All-season research candidate, with monsoon-tail calibration examined separately.",
+    "lead": "Medium-range sampled trajectories at the documented twelve-hour cadence.",
+    "weather": "Uncertain synoptic evolution and documented precipitation totals; preserve accumulation windows.",
+    "analysis": "GenCast samples multiple futures through a diffusion model. This makes it an uncertainty candidate, but its twelve-hour totals cannot be silently compared with hourly or daily observations. Use the exact checkpoint and issued inputs."
+  },
+  "weathernext_2": {
+    "region": "Global generated scenarios; evaluate at Indian stations and matched grids.",
+    "season": "Potential all-season source; separate seasonal verification is mandatory.",
+    "lead": "Medium-range product-specific leads and update schedule.",
+    "weather": "Broad probabilistic weather scenarios where the released field inventory supports them.",
+    "analysis": "WeatherNext 2 represents a generative AI family with managed and open-weight access routes. Those routes may differ in terms and historical availability. Keep the product, fields and checkpoint explicit before assigning it any operational weight."
+  },
+  "weathernext_3": {
+    "region": "Global managed product; India coverage and point meaning require provider confirmation.",
+    "season": "Do not infer monsoon superiority from global product availability.",
+    "lead": "Only provider-documented lead, cadence and historical replay support.",
+    "weather": "Potential multi-scenario guidance for supported weather fields.",
+    "analysis": "WeatherNext 3 is recorded as a managed candidate. An account endpoint is not a local checkpoint, and product terms or historical archives can change. Treat this as an integration hypothesis until access, variables and issue-time metadata are verified."
+  },
+  "neuralgcm_standard": {
+    "region": "Global coupled dynamics; Indian surface targets may need separate diagnostics.",
+    "season": "All-season circulation context, with monsoon structure evaluated explicitly.",
+    "lead": "Medium-range and climate research contexts, depending on the exact checkpoint.",
+    "weather": "Large-scale flow and moisture budget; default checkpoint is not a rain-gauge forecast.",
+    "analysis": "NeuralGCM couples a differentiable dynamical core with learned physics. It is scientifically valuable as a hybrid comparator, but precipitation-minus-evaporation or atmospheric state is not interchangeable with local 24-hour rainfall."
+  },
+  "neuralgcm_precipitation": {
+    "region": "Global coarse precipitation checkpoint; insufficient alone for Mumbai street-level detail.",
+    "season": "Monsoon rain is a useful research test, but local reliability must be measured.",
+    "lead": "At the checkpoint's documented stochastic forecast cadence.",
+    "weather": "Broad precipitation regimes; keep its coarse grid and target definition visible.",
+    "analysis": "This precipitation-specific NeuralGCM checkpoint is separate from the standard atmospheric version. Its coarse rain output could serve as a large-scale probabilistic expert after grid, accumulation and licensing audits."
+  },
+  "ncum_global": {
+    "region": "India-provider global guidance, if an as-issued NCMRWF archive is authorized.",
+    "season": "Especially relevant for an India seasonal comparison; skill is not assumed.",
+    "lead": "Operational lead support depends on the actual NCUM cycle and archived version.",
+    "weather": "Physical synoptic and surface guidance for monsoon and non-monsoon events.",
+    "analysis": "NCUM global would add a national operational physical source. Historical configuration numbers cannot stand in for the current system, and access to a usable forecast archive is a prerequisite for fitting any weight."
+  },
+  "ncum_regional": {
+    "region": "Regional India domain; exact domain must include the forecast site.",
+    "season": "Coastal and orographic monsoon evaluation is a strong pilot use case.",
+    "lead": "Shorter regional leads with boundary-condition and spin-up checks.",
+    "weather": "Terrain-influenced rain and wind structure, subject to physics-scheme bias.",
+    "analysis": "A regional physical model can resolve more local structure than a coarse global source, but its boundary forcing, grid and microphysics can shift rain maxima. It earns a blending role only after matched local verification."
+  },
+  "neps_global": {
+    "region": "India-provider global ensemble, contingent on member-level data access.",
+    "season": "Monsoon versus non-monsoon calibration should be reported separately.",
+    "lead": "Medium-range uncertainty candidate at versioned operational leads.",
+    "weather": "Large-scale rain, heat and wind uncertainty from physical perturbations.",
+    "analysis": "NEPS global could diversify the ensemble portfolio with an India-provider system. Preserve each member and cycle; the present catalogue does not verify member count, public archive access or local skill."
+  },
+  "neps_regional": {
+    "region": "Limited-area ensemble; check that every target lies within its configured domain.",
+    "season": "Western Ghats and coastal monsoon episodes are a motivating evaluation stratum.",
+    "lead": "Short-range regional uncertainty, subject to lateral boundaries and spin-up.",
+    "weather": "Possible convection-scale rain scenarios; wet bias and displacement need testing.",
+    "analysis": "NEPS regional is a promising physical ensemble candidate for local hazards. Its fine grid is not evidence that city-scale extremes are already accurate. A member archive and nearby gauge/radar observations are needed before training."
+  },
+  "laxmi": {
+    "region": "Global AI precipitation research with Indian monsoon relevance to test.",
+    "season": "Monsoon rainfall is the main scientific motivation, not a guaranteed local gain.",
+    "lead": "Only checkpoint-supported medium-range precipitation intervals.",
+    "weather": "Rain occurrence and intensity where observation-trained targets are documented.",
+    "analysis": "LAXMI studies whether better precipitation targets improve AI rain forecasts. A paper result cannot be substituted for an obtainable checkpoint and matched Mumbai hindcast. Treat availability and exact output interval as open integration questions."
+  },
+  "jua_ept_2": {
+    "region": "Provider-served domain; Indian availability must be confirmed contractually.",
+    "season": "Local monsoon and heat behavior cannot be inferred from another region's benchmark.",
+    "lead": "Use only licensed endpoint leads and variables once documented.",
+    "weather": "Surface temperature and wind comparison if the contracted API returns those fields.",
+    "analysis": "EPT-2 is a commercial service candidate, not an open checkpoint in this workspace. Its claimed strengths need product-specific, India-specific verification and cost/access review before it can join an operational blend."
+  },
+  "wrf": {
+    "region": "A configured regional domain, such as Maharashtra, built by the operator.",
+    "season": "Can target monsoon physics, but configuration and observational testing are essential.",
+    "lead": "Short-range mesoscale runs with spin-up and boundary timing managed explicitly.",
+    "weather": "Orographic rain, urban/coastal wind and convective detail with physics uncertainty.",
+    "analysis": "WRF is software for running a dynamical regional forecast, not a ready-made source feed. Every domain, land-surface and microphysics choice affects output. A WRF expert needs repeatable runs, an archive and independent local verification."
+  },
+  "aifs_wrf": {
+    "region": "Proposed regional WRF domain driven by documented global AIFS boundary fields.",
+    "season": "Monsoon storms are a test case; no coupled India result exists here.",
+    "lead": "Short regional leads after boundary updates and spin-up.",
+    "weather": "Tests whether AI large-scale forcing helps local wind and rain physics.",
+    "analysis": "This is a proposed coupling experiment. It is not an installed forecast. Boundary-field completeness, physical consistency, microphysics bias and cost must all be evaluated before comparing it with raw AIFS or WRF."
+  },
+  "corrdiff": {
+    "region": "Only domains with a locally trained paired coarse/fine dataset; Mumbai is not supplied here.",
+    "season": "A monsoon downscaler would need monsoon-rich paired training and independent storms.",
+    "lead": "Inherits the forecast lead from its coarse conditioning model.",
+    "weather": "Can sample plausible local texture, but cannot repair a wrong large-scale storm track.",
+    "analysis": "CorrDiff is a conditional downscaler, not an independent global weather forecast. Treat generated fine detail as uncertain scenarios. A Mumbai deployment would require paired high-resolution observations, conditioning data and neighborhood verification to avoid convincing but misplaced extremes."
+  }
+}

@@ -1,12 +1,12 @@
-import { copyFile, mkdir, readFile } from 'node:fs/promises';
+import { access, readFile, rm } from 'node:fs/promises';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const source = resolve(root, 'ppt.md');
-const destination = resolve(root, 'site', 'ppt.md');
-const guide = await readFile(source, 'utf8');
-if (!guide.includes('BharatBlend') || guide.length < 10000) throw new Error('Presentation guide is missing or incomplete.');
-await mkdir(resolve(root, 'site'), { recursive: true });
-await copyFile(source, destination);
-console.log(`Prepared Vercel site; presentation guide ${guide.length} characters.`);
+const site = resolve(root, 'site');
+const required = ['index.html', 'app.js', 'gate.js', 'style.css', 'data/demo.json', 'data/gate.json', 'data/catalogue.json', 'data/benchmark.json'];
+await Promise.all(required.map(name => access(resolve(site, name))));
+const html = await readFile(resolve(site, 'index.html'), 'utf8');
+if (/ppt\.md|presentation guide/i.test(html)) throw new Error('Private presentation material must not appear in the public site.');
+await rm(resolve(site, 'ppt.md'), { force: true });
+console.log(`Prepared Vercel site with ${required.length} checked assets; private presentation guide excluded.`);

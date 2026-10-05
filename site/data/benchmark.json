@@ -6,7 +6,7 @@
   "limitations": [
     "Synthetic results validate implementation and do not establish weather forecast skill.",
     "All comparisons condition on complete source support; outage results are separate.",
-    "Baseline adaptations are described in ppt.md; this is not a reproduction claim.",
+    "Baseline adaptations are described in the private research guide; this is not a reproduction claim.",
     "Pointwise confidence intervals are not a multiplicity-adjusted superiority test.",
     "No benchmark result automatically changes the deployed accuracy champion."
   ],
