@@ -22,17 +22,25 @@ let labReady = false;
 let routeSerial = 0;
 
 async function nav(view) {
-  const allowed = ['overview','public','lab','evidence','atlas',...platformViews];
-  const name = allowed.includes(view) ? view : 'overview';
+  const allowed = ['overview','public','evidence','atlas',...platformViews];
+  const neural=view==='lab'||view==='maps/neural';
+  const name = neural?'maps':allowed.includes(view) ? view : 'overview';
+  if(view==='lab')history.replaceState(null,'','#maps/neural');
+  document.body.dataset.workspace=name;
+  $('neural-studio').hidden=!neural;
+  $('maps-body').hidden=neural;
+  $('maps-status').hidden=neural;
+  $('maps-tab-geography').setAttribute('aria-current',neural?'false':'page');
+  $('maps-tab-neural').setAttribute('aria-current',neural?'page':'false');
   window.anvayaContext={view:name};
   const serial = ++routeSerial;
   for (const item of allowed) $(`view-${item}`).hidden = item !== name;
   document.querySelectorAll('#nav a').forEach(link => { link.classList.toggle('active', link.dataset.view === name); if (link.dataset.view === name) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
   window.scrollTo({top:0,behavior:'auto'});
   try {
-    if (platformViews.includes(name)) await openPlatform(name);
+    if (platformViews.includes(name)&&!neural) await openPlatform(name);
     if (name === 'public') await loadPublic();
-    if (name === 'lab') {
+    if (neural) {
       setStatus('lab-message','Loading trained research examples…');
       [demo,gate] = await Promise.all([loadResearch('demo'),loadResearch('gate')]);
       if (demo.model_digest !== gate.model_digest) throw Error('The saved research artifacts do not match.');
@@ -43,7 +51,7 @@ async function nav(view) {
     if (name === 'atlas') { catalogue = await loadResearch('catalogue'); if (serial === routeSerial) renderAtlas(); }
   } catch(error) {
     if (serial !== routeSerial) return;
-    if (name === 'lab') setStatus('lab-message',`Research examples unavailable: ${error.message}`,true);
+    if (neural) setStatus('lab-message',`Research examples unavailable: ${error.message}`,true);
     if (name === 'evidence') $('evidence-content').textContent=`Evidence unavailable: ${error.message}`;
     if (name === 'atlas') $('model-grid').textContent=`Model profiles unavailable: ${error.message}`;
   }
@@ -211,7 +219,7 @@ const methodDescriptions={
   raw_equal_mixture:['Equal raw mixture','Combines uncalibrated source distributions with equal weights. It helps assess the value of calibration and adaptive routing.']
 };
 function methodName(id){if(methodDescriptions[id])return methodDescriptions[id][0];const [kind,source]=id.split(':');return `${({calibrated:'Calibrated',raw_members:'Raw ensemble',raw_mean:'Raw mean'})[kind]||title(kind)} · ${sourceName(source||id)}`;}
-function openMethod(id){const source=id.split(':')[1],entry=methodDescriptions[id];$('model-detail').innerHTML=`<span class="eyebrow">BENCHMARK METHOD · GENERATED RESEARCH DATA</span><h1>${esc(methodName(id))}</h1><p class="method-description">${esc(entry?.[1]||`${id.startsWith('calibrated')?'Calibrated forecast distribution':id.startsWith('raw_members')?'Uncalibrated ensemble members':'Uncalibrated point mean'} for this source, evaluated on the same held-out generated cases.`)}</p>${source?`<p>Source model: ${profileLink(source)}. Open its profile for architecture, uses, limitations and primary references.</p>`:''}<p class="fineprint">Benchmark scores measure errors, not model weights. Lower scores are better only within the displayed test. The training examples are synthetic, and these results do not validate an operational Indian forecast.</p><a class="model-link" href="#lab" id="method-lab-link">Explore weights and exact calculations →</a>`;$('model-dialog').showModal();$('method-lab-link').addEventListener('click',()=>$('model-dialog').close());}
+function openMethod(id){const source=id.split(':')[1],entry=methodDescriptions[id];$('model-detail').innerHTML=`<span class="eyebrow">BENCHMARK METHOD · GENERATED RESEARCH DATA</span><h1>${esc(methodName(id))}</h1><p class="method-description">${esc(entry?.[1]||`${id.startsWith('calibrated')?'Calibrated forecast distribution':id.startsWith('raw_members')?'Uncalibrated ensemble members':'Uncalibrated point mean'} for this source, evaluated on the same held-out generated cases.`)}</p>${source?`<p>Source model: ${profileLink(source)}. Open its profile for architecture, uses, limitations and primary references.</p>`:''}<p class="fineprint">Benchmark scores measure errors, not model weights. Lower scores are better only within the displayed test. The training examples are synthetic, and these results do not validate an operational Indian forecast.</p><a class="model-link" href="#maps/neural" id="method-lab-link">Explore weights and exact calculations →</a>`;$('model-dialog').showModal();$('method-lab-link').addEventListener('click',()=>$('model-dialog').close());}
 
 function renderEvidence() {
   if (!benchmark) return;
