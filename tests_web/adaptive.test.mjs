@@ -25,3 +25,14 @@ test('chat rejects browser-supplied API keys',async()=>{
   const result=await answerChat({messages:[{role:'user',content:'Hello'}]},{complete:async()=>({content:'Connected'})});
   assert.equal(result.answer,'Connected');
 });
+test('Groq authentication failure points to server configuration, never a visitor key form',async()=>{
+  const before=process.env.GROQ_API_KEY,fetchBefore=globalThis.fetch;
+  process.env.GROQ_API_KEY='test-key';
+  globalThis.fetch=async()=>new Response(JSON.stringify({error:'unauthorized'}),{status:401,headers:{'content-type':'application/json'}});
+  try{
+    await assert.rejects(answerChat({messages:[{role:'user',content:'Hello'}]}),/GROQ_API_KEY in Vercel Project Settings and redeploy/);
+  }finally{
+    globalThis.fetch=fetchBefore;
+    if(before===undefined)delete process.env.GROQ_API_KEY;else process.env.GROQ_API_KEY=before;
+  }
+});

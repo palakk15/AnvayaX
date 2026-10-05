@@ -91,7 +91,11 @@ export async function answerChat(input, { complete } = {}) {
   const run=complete || (async messages => {
     let response;
     try {response=await fetchJSON('https://api.groq.com/openai/v1/chat/completions',{timeout:25000,maxBytes:300000,method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${key}`},body:JSON.stringify({model:process.env.GROQ_MODEL || 'openai/gpt-oss-120b',messages,tools,tool_choice:'auto',temperature:0.2,max_completion_tokens:1800})});}
-    catch(error){if(/HTTP 401|HTTP 403/.test(error.message))throw new ServiceError('Groq rejected the API key. Open API key settings and replace it with an active key.',401);throw error;}
+    catch(error){
+      if(/HTTP 401/.test(error.message))throw new ServiceError('Groq rejected the server API key. Check GROQ_API_KEY in Vercel Project Settings and redeploy.',502);
+      if(/HTTP 403/.test(error.message))throw new ServiceError('Groq denied this key or model. Check Groq model permissions and the server key in Vercel.',502);
+      throw error;
+    }
     return response.choices?.[0]?.message;
   });
   const steps=selectedEvidence?[{tool:'selected_forecast',status:'complete',summary:`Retrieved selected forecast for ${selectedEvidence.city} at ${selectedEvidence.retrieved_at}`}]:[],sources=new Map(); let calls=0;
