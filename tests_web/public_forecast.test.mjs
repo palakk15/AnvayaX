@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { GET, normalizeProvider, models } from '../api/public-forecast.mjs';
+import { GET as searchLocations, normalizeLocations } from '../api/locations.mjs';
 
 function fixture() {
   const hourly = { time: ['2026-09-27T00:00', '2026-09-27T01:00'] };
@@ -40,7 +41,10 @@ test('rejects an unsupported city before contacting the provider', async () => {
 
 test('serves attributable real provider data but never declares a trained blend', async () => {
   const original = globalThis.fetch;
-  globalThis.fetch = async () => new Response(JSON.stringify(fixture()), { status: 200 });
+  globalThis.fetch = async url => {
+    assert.equal(new URL(url).searchParams.get('forecast_hours'), '96');
+    return new Response(JSON.stringify(fixture()), { status: 200 });
+  };
   try {
     const response = await GET(new Request('http://localhost/api/public-forecast?city=Mumbai'));
     assert.equal(response.status, 200);
@@ -51,5 +55,44 @@ test('serves attributable real provider data but never declares a trained blend'
     assert.equal(body.skill_verified, false);
     assert.equal(body.rows.length, 6);
     assert.match(body.sha256, /^[0-9a-f]{64}$/);
+  } finally { globalThis.fetch = original; }
+});
+
+test('searches Indian places and excludes results outside India', async () => {
+  assert.deepEqual(normalizeLocations({ results: [
+    { id: 1, name: 'Pune', admin1: 'Maharashtra', country_code: 'IN', latitude: 18.52, longitude: 73.85 },
+    { id: 2, name: 'Pune', country_code: 'US', latitude: 40, longitude: -80 },
+  ] }).map(place => place.name), ['Pune']);
+  const original = globalThis.fetch;
+  globalThis.fetch = async url => {
+    assert.equal(new URL(url).searchParams.get('countryCode'), 'IN');
+    return new Response(JSON.stringify({ results: [
+      { id: 1275339, name: 'Mumbai', admin1: 'Maharashtra', country_code: 'IN', latitude: 19.07, longitude: 72.87 },
+    ] }), { status: 200 });
+  };
+  try {
+    const response = await searchLocations(new Request('http://localhost/api/locations?q=Mum'));
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).locations[0].id, 1275339);
+  } finally { globalThis.fetch = original; }
+});
+
+test('resolves an Indian place ID before fetching source forecasts', async () => {
+  const original = globalThis.fetch;
+  const calls = [];
+  globalThis.fetch = async url => {
+    calls.push(String(url));
+    if (calls.length === 1) return new Response(JSON.stringify({
+      id: 1275339, name: 'Mumbai', admin1: 'Maharashtra', country_code: 'IN', latitude: 19.07, longitude: 72.87,
+    }), { status: 200 });
+    return new Response(JSON.stringify(fixture()), { status: 200 });
+  };
+  try {
+    const response = await GET(new Request('http://localhost/api/public-forecast?place_id=1275339'));
+    assert.equal(response.status, 200);
+    const body = await response.json();
+    assert.equal(body.requested_location.id, 1275339);
+    assert.equal(body.city, 'Mumbai');
+    assert.equal(new URL(calls[1]).searchParams.get('forecast_hours'), '96');
   } finally { globalThis.fetch = original; }
 });

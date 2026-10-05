@@ -3,6 +3,7 @@ import { readFile, stat } from 'node:fs/promises';
 import { dirname, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { GET } from '../api/public-forecast.mjs';
+import { GET as searchLocations } from '../api/locations.mjs';
 
 const site = resolve(dirname(fileURLToPath(import.meta.url)), '..', 'site');
 const types = { '.html': 'text/html; charset=utf-8', '.css': 'text/css; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.json': 'application/json; charset=utf-8', '.md': 'text/markdown; charset=utf-8' };
@@ -11,6 +12,12 @@ const server = createServer(async (req, res) => {
   const url = new URL(req.url, `http://${req.headers.host || 'localhost'}`);
   if (url.pathname === '/api/public-forecast') {
     const response = await GET(new Request(url, { method: req.method }));
+    res.writeHead(response.status, Object.fromEntries(response.headers));
+    res.end(Buffer.from(await response.arrayBuffer()));
+    return;
+  }
+  if (url.pathname === '/api/locations') {
+    const response = await searchLocations(new Request(url, { method: req.method }));
     res.writeHead(response.status, Object.fromEntries(response.headers));
     res.end(Buffer.from(await response.arrayBuffer()));
     return;
@@ -28,4 +35,4 @@ const server = createServer(async (req, res) => {
     res.writeHead(404); res.end('Not found');
   }
 });
-server.listen(port, '127.0.0.1', () => console.log(`BharatBlend preview: http://127.0.0.1:${port}`));
+server.listen(port, '127.0.0.1', () => console.log(`Anvaya X preview: http://127.0.0.1:${port}`));

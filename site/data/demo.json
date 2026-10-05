@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "data_kind": "synthetic",
-  "exported_at": "2026-09-27T18:12:37.591955+00:00",
+  "exported_at": "2026-09-27T19:25:03.771220+00:00",
   "model_digest": "772d9f907cf8f81cb78b75825b5b6891ca1507b15afef7460a4421a6284ba364",
   "message": "Generated integration cases, not actual output from the named weather models.",
   "cases": [

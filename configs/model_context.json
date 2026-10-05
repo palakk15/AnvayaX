@@ -46,7 +46,7 @@
     "season": "All-season candidate, with extreme monsoon rainfall as a separate verification stratum.",
     "lead": "Medium-range atmospheric guidance, evaluated only on its documented cycle and lead support.",
     "weather": "Large-scale monsoon flow and six-hour rain where the selected archive provides that field.",
-    "analysis": "GraphCast's graph architecture offers a different data-driven forecast family. NOAA/CIRA archive products can include six-hour precipitation, but the initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
+    "analysis": "The older GraphCastGFS archive represents a different data-driven forecast family and is distinct from NOAA's newer operational AIGFS. NOAA/CIRA archive products can include six-hour precipitation, but initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
   },
   "pangu_weather": {
     "region": "Global atmospheric fields; use Indian surface/upper-air channels that actually exist.",

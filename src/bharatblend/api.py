@@ -1,4 +1,4 @@
-"""Read-only HTTP interface for prepared BharatBlend forecast artifacts.
+"""Read-only HTTP interface for prepared Anvaya X forecast artifacts.
 
 Starting the application never trains models or downloads forecast data.
 """
@@ -93,7 +93,7 @@ def create_app(data_dir: Path | str = "artifacts/demo") -> FastAPI:
     """Build an app whose service is loaded lazily from existing artifacts."""
 
     application = FastAPI(
-        title="BharatBlend",
+        title="Anvaya X",
         version="0.1.0",
         description=(
             "Adaptive forecast blending with explicit provenance and explanation receipts. "

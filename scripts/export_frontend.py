@@ -139,6 +139,29 @@ def export_frontend(workspace: str | Path, destination: str | Path) -> dict:
         raise ValueError("Every catalogued model needs a four-axis context profile")
     for item in profile["models"]:
         item["use_context"] = contexts[item["id"]]
+        if item["id"] == "graphcast_operational":
+            item["name"] = "GraphCastGFS archive"
+            item["description"] = ("Archived GraphCastGFS research/experimental product; "
+                                   "distinct from NOAA's newer operational AIGFS.")
+            item["status"] = "research_archive_candidate"
+            item["evidence_urls"].append(
+                "https://registry.opendata.aws/noaa-nws-graphcastgfs-pds/")
+    additions = json.loads(Path("configs/atlas_additions.json").read_text(encoding="utf-8"))
+    if {item["id"] for item in additions} & {item["id"] for item in profile["models"]}:
+        raise ValueError("Atlas additions duplicate a core model ID")
+    for item in additions:
+        if not all(item.get("use_context", {}).get(axis) for axis in
+                   ("region", "season", "lead", "weather", "analysis")):
+            raise ValueError(f"Atlas addition {item['id']} lacks context analysis")
+        item["catalogue_only"] = True
+        item["enabled"] = False
+        item["assessment_basis"] = ("Provider documentation and engineering suitability; "
+                                    "not measured Indian forecast skill.")
+    profile["models"].extend(additions)
+    for dataset in profile["datasets"]:
+        if dataset["id"] == "open_meteo_named_models":
+            dataset["coverage"] = "Searchable Indian places and up to 96 future hourly provider values"
+            dataset["reference_review"] = "Provider forecast and geocoding documentation reviewed on 2026-09-28"
     payload = {"schema_version": 1, "data_kind": "synthetic",
                "exported_at": datetime.now(UTC).isoformat(),
                "model_digest": service.model_digest,

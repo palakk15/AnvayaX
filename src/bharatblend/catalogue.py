@@ -108,7 +108,7 @@ PROFILES = {
              'Software pipeline requiring domain, physics, initial state and boundary conditions.',
              ['Explicit domain and physics choices', 'Regional experiment control'],
              ['Compute and configuration burden', 'Software installation is not a forecast archive']),
-    'aifs_wrf': ('Proposed BharatBlend research integration', 'AIFS boundary forcing into configured WRF',
+    'aifs_wrf': ('Proposed Anvaya X research integration', 'AIFS boundary forcing into configured WRF',
              'Proposed coupling experiment; no operational source or completed integration exists here.',
              ['Testable AI-to-regional-physics hypothesis', 'Can isolate boundary-forcing choices in an experiment'],
              ['Required boundary-field completeness unproven', 'No measured skill or working coupled run']),
@@ -211,7 +211,7 @@ def catalogue() -> dict:
 
 def export_catalogue_markdown() -> str:
     data = catalogue()
-    lines = ['# BharatBlend model and data-source reference', '', f"Reviewed: {data['reviewed_on']}", '',
+    lines = ['# Anvaya X model and data-source reference', '', f"Reviewed: {data['reviewed_on']}", '',
              data['scope'], '', data['note'], '',
              'Advantages and limitations are engineering assessments, not a local performance ranking. '
              'Unverified values stay unknown. All machine-readable properties are included below.']

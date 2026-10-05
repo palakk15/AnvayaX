@@ -86,7 +86,7 @@ test('public site excludes presentation guide and every model explains four cont
   await assert.rejects(stat(new URL('../site/ppt.md', import.meta.url)), { code: 'ENOENT' });
   const html = await readFile(new URL('../site/index.html', import.meta.url), 'utf8');
   assert.doesNotMatch(html, /ppt\.md|presentation guide|No real-world skill claim/i);
-  assert.equal(catalogue.models.length, 27);
+  assert.equal(catalogue.models.length, 35);
   for (const model of catalogue.models) {
     for (const axis of ['region', 'season', 'lead', 'weather', 'analysis']) {
       assert.ok(model.use_context?.[axis]?.length > 35, `${model.id} ${axis}`);

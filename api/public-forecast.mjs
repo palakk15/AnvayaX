@@ -56,11 +56,36 @@ export function normalizeProvider(data) {
 }
 
 export async function GET(request) {
-  const city = new URL(request.url).searchParams.get('city') || 'Delhi';
-  if (!Object.hasOwn(cities, city)) return Response.json({ error: 'Choose a supported city.' }, { status: 400 });
-  const [latitude, longitude] = cities[city];
+  const params = new URL(request.url).searchParams;
+  const placeId = params.get('place_id');
+  let city, latitude, longitude, requestedLocation;
+  if (placeId !== null) {
+    if (!/^\d{1,12}$/.test(placeId)) return Response.json({ error: 'Choose a valid Indian location.' }, { status: 400 });
+    try {
+      const lookup = new URL('https://geocoding-api.open-meteo.com/v1/get');
+      lookup.searchParams.set('id', placeId);
+      const response = await fetch(lookup, { signal: AbortSignal.timeout(5000), redirect: 'manual', headers: { Accept: 'application/json' } });
+      if (!response.ok || Number(response.headers.get('content-length') || 0) > 50000) throw Error('Location lookup unavailable');
+      const raw = await response.arrayBuffer();
+      if (raw.byteLength > 50000) throw Error('Location lookup too large');
+      const place = JSON.parse(Buffer.from(raw).toString('utf8'));
+      if (place.country_code !== 'IN' || !Number.isFinite(place.latitude) || !Number.isFinite(place.longitude)) {
+        return Response.json({ error: 'Choose a location in India.' }, { status: 400 });
+      }
+      city = String(place.name || '').slice(0, 100);
+      latitude = place.latitude; longitude = place.longitude;
+      requestedLocation = { id: place.id, name: city, district: String(place.admin2 || '').slice(0, 100), state: String(place.admin1 || '').slice(0, 100), country_code: 'IN' };
+    } catch {
+      return Response.json({ error: 'Location lookup is temporarily unavailable.' }, { status: 502 });
+    }
+  } else {
+    city = params.get('city') || 'Mumbai';
+    if (!Object.hasOwn(cities, city)) return Response.json({ error: 'Choose a supported city.' }, { status: 400 });
+    [latitude, longitude] = cities[city];
+    requestedLocation = { name: city, country_code: 'IN', quick_pick: true };
+  }
   const url = new URL(endpoint);
-  Object.entries({ latitude, longitude, hourly: Object.keys(fields).join(','), models: Object.keys(models).join(','), forecast_days: 3, timezone: 'UTC', wind_speed_unit: 'ms' })
+  Object.entries({ latitude, longitude, hourly: Object.keys(fields).join(','), models: Object.keys(models).join(','), forecast_hours: 96, timezone: 'UTC', wind_speed_unit: 'ms' })
     .forEach(([key, value]) => url.searchParams.set(key, String(value)));
   try {
     const response = await fetch(url, { signal: AbortSignal.timeout(8500), redirect: 'manual', headers: { Accept: 'application/json' } });
@@ -71,7 +96,7 @@ export async function GET(request) {
     const provider = JSON.parse(raw.toString('utf8'));
     const rows = normalizeProvider(provider);
     return Response.json({
-      schema_version: 1, data_kind: 'real', evidence_kind: 'provider_forecast', city,
+      schema_version: 1, data_kind: 'real', evidence_kind: 'provider_forecast', city, requested_location: requestedLocation,
       requested_coordinates: { latitude, longitude },
       returned_coordinates: { latitude: provider.latitude, longitude: provider.longitude, elevation: provider.elevation },
       retrieved_at: new Date().toISOString(), source_url: url.toString(), sha256: createHash('sha256').update(raw).digest('hex'), bytes: raw.length,

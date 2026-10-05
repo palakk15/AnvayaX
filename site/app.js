@@ -1,4 +1,5 @@
 import { additiveForward, spatialForward, scenarioRows, mixtureFromFixedSources } from './gate.js';
+import { futureTargetTimes, formatIST, modelWindow } from './live_view.js';
 
 const $ = id => document.getElementById(id);
 const esc = value => String(value ?? '').replace(/[&<>"']/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[ch]));
@@ -6,17 +7,46 @@ const pct = value => `${(100 * value).toFixed(value < .001 ? 4 : 1)}%`;
 const num = (value, places = 1) => Number(value).toLocaleString('en-IN', {maximumFractionDigits:places});
 const title = value => String(value).replace(/_/g,' ').replace(/\b\w/g, c => c.toUpperCase());
 const sourceName = id => ({gfs:'NOAA GFS',gefs:'NOAA GEFS',graphcast_operational:'GraphCast',ifs:'ECMWF IFS',aifs:'ECMWF AIFS'}[id] || title(id));
-const colors = ['#7461e9','#36baa7','#f09e6b','#5d8fe6','#d577a8'];
-let demo, gate, catalogue, benchmark, currentCase, labTab = 'weights', liveCache = new Map();
+const colors = ['#1c897c','#c4874b','#547bb3','#b86c52','#6e8f95'];
+let demo, gate, catalogue, benchmark, currentCase, labTab = 'weights';
+let liveSelection = { key: 'city:Mumbai', parameter: 'city=Mumbai', label: 'Mumbai, Maharashtra' };
+const liveCache = new Map();
+const researchLoads = new Map();
+let labReady = false;
+let routeSerial = 0;
 
-function nav(view) {
+async function nav(view) {
   const allowed = ['overview','public','lab','evidence','atlas'];
   const name = allowed.includes(view) ? view : 'overview';
+  const serial = ++routeSerial;
   for (const item of allowed) $(`view-${item}`).hidden = item !== name;
   document.querySelectorAll('#nav a').forEach(link => { link.classList.toggle('active', link.dataset.view === name); if (link.dataset.view === name) link.setAttribute('aria-current','page'); else link.removeAttribute('aria-current'); });
-  $('page-title').textContent = ({overview:'Overview',public:'Live forecasts',lab:'Explainable blend',evidence:'Evidence',atlas:'Model atlas'})[name];
-  if (name === 'public') loadPublic();
-  window.scrollTo({top:0,behavior:'instant'});
+  window.scrollTo({top:0,behavior:'auto'});
+  try {
+    if (name === 'public') await loadPublic();
+    if (name === 'lab') {
+      setStatus('lab-message','Loading trained research examples…');
+      [demo,gate] = await Promise.all([loadResearch('demo'),loadResearch('gate')]);
+      if (demo.model_digest !== gate.model_digest) throw Error('The saved research artifacts do not match.');
+      if (serial === routeSerial && !labReady) { chooseLocation(); labReady = true; }
+      if (serial === routeSerial) setStatus('lab-message','');
+    }
+    if (name === 'evidence') { benchmark = await loadResearch('benchmark'); if (serial === routeSerial) renderEvidence(); }
+    if (name === 'atlas') { catalogue = await loadResearch('catalogue'); if (serial === routeSerial) renderAtlas(); }
+  } catch(error) {
+    if (serial !== routeSerial) return;
+    if (name === 'lab') setStatus('lab-message',`Research examples unavailable: ${error.message}`,true);
+    if (name === 'evidence') $('evidence-content').textContent=`Evidence unavailable: ${error.message}`;
+    if (name === 'atlas') $('model-grid').textContent=`Model profiles unavailable: ${error.message}`;
+  }
+}
+
+async function loadResearch(name) {
+  if (!researchLoads.has(name)) researchLoads.set(name,fetch(`/data/${name}.json`).then(response=>{
+    if (!response.ok) throw Error(`${name} returned ${response.status}`);
+    return response.json();
+  }).catch(error=>{researchLoads.delete(name);throw error;}));
+  return researchLoads.get(name);
 }
 
 function fillSelect(element, items, label) { element.innerHTML = items.map(item => `<option value="${esc(item)}">${esc(label(item))}</option>`).join(''); }
@@ -33,7 +63,7 @@ function chooseLocation() {
 }
 function chooseCase() {
   const cases = demo.cases.filter(item => item.variable === $('lab-variable').value && item.location_id === $('lab-location').value);
-  $('lab-case').innerHTML = cases.map((item,i) => `<option value="${i}">${esc(new Date(item.base.target.valid_start).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}))} · ${i===cases.length-1?'Latest example':'Prepared example'}</option>`).join('');
+  $('lab-case').innerHTML = cases.map((item,i) => `<option value="${i}">${esc(new Date(item.base.target.valid_start).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric',timeZone:'UTC'}))} · ${item.selection.startsWith('illustrative')?'Illustrative high-rain case':'Latest prepared case'}</option>`).join('');
   $('lab-case').value = String(cases.length-1);
   resetCase();
 }
@@ -48,19 +78,18 @@ function resetCase() {
   $('input-elevation').value = raw['geography.elevation'];
   $('input-situation').value = 'saved';
   const sources = gate.variables[currentCase.variable].sources;
-  $('source-inputs').innerHTML = sources.map((id,i) => `<div class="source-editor" data-source="${esc(id)}"><label><input class="source-available" type="checkbox" checked> <span style="color:${colors[i%colors.length]}">●</span> ${esc(sourceName(id))} available</label><div class="editor-grid"><label class="input-field">Forecast signal<input class="source-signal" type="number" step="0.1" value="${esc(raw[`regime.source_${id}`])}"><small>Raw model value in target units.</small></label><label class="input-field">Recent error<input class="source-skill" type="number" min="0" max="20" step="0.01" value="${esc(raw[`recent_skill.${id}`])}"><small>Delayed normalized error; lower is better.</small></label><label class="input-field">Age, hours<input class="source-age" type="number" min="0" max="240" step="1" value="${esc(raw[`age.${id}`])}"><small>Hours since source initialization.</small></label><label class="input-field">Spread<input class="source-spread" type="number" min="0" max="1000" step="0.1" value="${esc(raw[`disagreement.spread_${id}`])}"><small>Member spread, if available.</small></label></div></div>`).join('');
+  $('source-inputs').innerHTML = sources.map((id,i) => `<div class="source-editor" data-source="${esc(id)}"><label><input class="source-available" type="checkbox" checked> <span style="color:${colors[i%colors.length]}">●</span> ${esc(sourceName(id))} available</label><div class="editor-grid"><label class="input-field">Router signal<input class="source-signal" type="number" step="0.1" value="${esc(raw[`regime.source_${id}`])}"><small>Context input; source distribution stays fixed.</small></label><label class="input-field">Recent error<input class="source-skill" type="number" min="0" max="20" step="0.01" value="${esc(raw[`recent_skill.${id}`])}"><small>Delayed normalized error; lower is better.</small></label><label class="input-field">Age, hours<input class="source-age" type="number" min="0" max="240" step="1" value="${esc(raw[`age.${id}`])}"><small>Age input; fitted effect can be zero.</small></label><label class="input-field">Spread<input class="source-spread" type="number" min="0" max="1000" step="0.1" value="${esc(raw[`disagreement.spread_${id}`])}"><small>Member spread, if available.</small></label></div></div>`).join('');
   $('source-inputs').querySelectorAll('input').forEach(input => input.addEventListener('input', renderLab));
   fillSelect($('map-source'), sources, sourceName);
   renderLab();
 }
 function applyPattern() {
   const preset = $('input-situation').value;
-  if (preset === 'saved') { resetCase(); return; }
   const editors = [...document.querySelectorAll('.source-editor')];
   const baseline = editors.map(editor => Number(currentCase.base.evidence.context_feature_values[`regime.source_${editor.dataset.source}`]));
   const center = baseline.reduce((a,b)=>a+b,0)/baseline.length;
   editors.forEach((editor,i) => {
-    const value = preset === 'agreement' ? center : preset === 'disagreement' ? center + (i-(editors.length-1)/2)*Math.max(1,Math.abs(center)*.8) : baseline[i]*1.8;
+    const value = preset === 'saved' ? baseline[i] : preset === 'agreement' ? center : preset === 'disagreement' ? center + (i-(editors.length-1)/2)*Math.max(1,Math.abs(center)*.8) : baseline[i]*1.8;
     editor.querySelector('.source-signal').value = value.toFixed(2);
   });
   renderLab();
@@ -84,7 +113,7 @@ function relevantTerms(additive, sourceIndex, mask) {
 function weightRows(spec, result, mask, additive=null) {
   return spec.sources.map((id,i)=>{
     const top=additive ? relevantTerms(additive,i,mask).slice(0,2) : [];
-    const reason=!mask[i]?'Excluded by your availability choice.':additive ? (top.length ? `Relative score: ${top.map(term=>`${featureLabel(term.key)} ${term.value>=0?'+':'−'}${num(Math.abs(term.value),2)}`).join('; ')}.`:'The fitted baseline dominates this source’s score.') : 'A trained network score after the four-site context and availability mask.';
+    const reason=!mask[i]?'Unavailable in this scenario, so its share is fixed at zero.':additive ? (top.length ? `Main score drivers versus the current mix: ${top.map(term=>`${featureLabel(term.key)} ${term.value>=0?'+':'−'}${num(Math.abs(term.value),2)}`).join('; ')}.`:'The learned source prior dominates this score.') : 'The network combines this site with three nearby contexts, then applies the availability mask.';
     return `<div class="weight-item"><div class="weight-top"><strong><span style="color:${colors[i%colors.length]}">●</span> ${esc(sourceName(id))}</strong><b>${pct(result.weights[i])}</b></div><div class="weight-track"><div class="weight-fill" style="width:${Math.max(0,Math.min(100,result.weights[i]*100))}%;background:${colors[i%colors.length]}"></div></div><p>${esc(reason)}</p></div>`;
   }).join('');
 }
@@ -136,9 +165,9 @@ function renderMap(spec) {
   const x=lon=>115+(lon-72)*35, y=lat=>288-(lat-11)*14;
   const dots=cases.map(item=>{
     const source=item.base.sources.find(s=>s.source_id===id),weight=source?.weight||0,cx=x(item.base.target.longitude),cy=y(item.base.target.latitude);
-    return `<g><circle cx="${cx}" cy="${cy}" r="${8+weight*22}" fill="#7563e8" fill-opacity="${.25+weight*.7}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy+37}" text-anchor="middle" font-size="12" font-weight="700" fill="#53627f">${esc(title(item.location_id))} ${pct(weight)}</text></g>`;
+    return `<g><circle cx="${cx}" cy="${cy}" r="${8+weight*22}" fill="#1c897c" fill-opacity="${.25+weight*.7}" stroke="#fff" stroke-width="2"/><text x="${cx}" y="${cy+37}" text-anchor="middle" font-size="12" font-weight="700" fill="#456c65">${esc(title(item.location_id))} ${pct(weight)}</text></g>`;
   }).join('');
-  $('weight-map').innerHTML=`<path d="M90 285 Q160 115 405 56 Q630 74 790 250" fill="none" stroke="#c9d3e7" stroke-width="3" stroke-dasharray="7 7"/>${dots}`;
+  $('weight-map').innerHTML=`<path d="M90 285 Q160 115 405 56 Q630 74 790 250" fill="none" stroke="#b7d5c9" stroke-width="3" stroke-dasharray="7 7"/>${dots}`;
   $('map-range').textContent=`${sourceName(id)} across ${cases.length} saved locations. Prepared examples can have different dates and leads.`;
 }
 function renderLab() {
@@ -162,79 +191,170 @@ function renderLab() {
 }
 
 function renderEvidence() {
+  if (!benchmark) return;
   const variable=$('evidence-variable').value,metric=$('evidence-metric').value;
   const data=benchmark.variables[variable], methods=Object.entries(data.methods).filter(([,record])=>Number.isFinite(record[metric])).sort((a,b)=>a[1][metric]-b[1][metric]);
   const best=methods[0]?.[1][metric]||1,max=methods.at(-1)?.[1][metric]||1;
   const metrics=({proper_score:'Distribution score',mae:'Mean absolute error',rmse:'Root mean square error'});
-  $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Best displayed score',num(best,3),'Lower is better for this metric')}</div><article class="card"><div class="eyebrow">METHOD COMPARISON</div><h2>${esc(metrics[metric])}</h2><p>Each row uses the same held-out case count. Switch target or metric to inspect a different comparison.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. ${esc(title(id))}</strong><b>${num(item[metric],3)}</b><meter min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><div class="eyebrow">HOW TO READ THIS</div><h2>Lower scores mean closer forecasts</h2><p>The distribution score rewards both location and uncertainty. MAE and RMSE assess point summaries. They answer different questions, so a method can lead one metric and trail another.</p></article><article class="card"><div class="eyebrow">EVALUATION DESIGN</div><h2>Traceable splits</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. The benchmark stays separate from current provider forecasts.</p></article></div>`;
+  $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Lowest displayed score',num(best,3),'Within this generated benchmark')}</div><article class="card"><span class="eyebrow">COMMON CASE SET</span><h2>${esc(metrics[metric])}</h2><p>All methods below use the same held-out cases. Lower is better; this ranking is specific to the selected generated test and metric.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. ${esc(title(id))}</strong><b>${num(item[metric],3)}</b><meter aria-label="${esc(title(id))} score" min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><span class="eyebrow">READ THE SCORES</span><h2>Different metrics answer different questions</h2><p>The distribution score assesses a forecast distribution. MAE and RMSE measure point-summary errors. A method can lead one measure and trail another.</p></article><article class="card"><span class="eyebrow">TRACEABLE SPLITS</span><h2>See how cases were separated</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. These generated cases do not replace real Indian station and rain-gauge verification.</p></article></div>`;
 }
 function modelFamily(item) { return item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':'hybrid'; }
 function renderAtlas() {
+  if (!catalogue) return;
   const query=$('model-search').value.trim().toLowerCase(),family=$('model-family').value,variable=$('model-variable').value;
   const filtered=catalogue.models.filter(item=>(family==='all'||modelFamily(item)===family)&&(variable==='all'||item.capabilities?.[variable]===true)&&(!query||[item.name,item.provider,item.description,...Object.values(item.use_context||{})].join(' ').toLowerCase().includes(query)));
   $('model-count').textContent=`${filtered.length} / ${catalogue.models.length} profiles`;
-  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p><div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
+  $('model-grid').innerHTML=filtered.map(item=>`<article class="model-card"><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.provider||'Research')}</span><span class="status">${['gfs','ifs_control','aifs_single'].includes(item.id)?'Raw feed shown here':item.catalogue_only?'New candidate profile':'Candidate profile'}</span></div><h2>${esc(item.name)}</h2><p>${esc(item.description||item.purpose)}</p><div class="context-grid">${[['Region','region'],['Season','season'],['Lead time','lead'],['Weather situation','weather']].map(([label,key])=>`<div class="context-cell"><strong>${label}</strong><span>${esc(item.use_context?.[key]||'Context requires independent validation.')}</span></div>`).join('')}</div><button type="button" data-model="${esc(item.id)}">View full analysis ↗</button></article>`).join('')||'<p>No models match these filters.</p>';
   $('model-grid').querySelectorAll('[data-model]').forEach(button=>button.addEventListener('click',()=>openModel(button.dataset.model)));
 }
 function openModel(id) {
   const item=catalogue.models.find(model=>model.id===id);if(!item)return;
   const context=item.use_context||{};
   const links=(item.evidence_urls||[]).filter(url=>/^https:\/\//.test(url)).slice(0,5);
-  $('model-detail').innerHTML=`<div class="eyebrow">MODEL ANALYSIS · ${esc(item.provider||'Research')}</div><h1>${esc(item.name)}</h1><p>${esc(item.description||item.purpose)}</p><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.architecture||'Architecture documented in source')}</span></div><h2 style="margin-top:25px">When should it be considered?</h2><div class="detail-grid">${[['Region',context.region],['Season',context.season],['Lead time',context.lead],['Weather situation',context.weather]].map(([label,text])=>`<div class="detail-box"><strong>${label}</strong>${esc(text||'Requires local validation.')}</div>`).join('')}</div><h2 style="margin-top:25px">Deeper analysis</h2><p>${esc(context.analysis||item.purpose)}</p><div class="detail-grid"><div class="detail-box"><strong>Strengths</strong><ul class="detail-list">${(item.pros||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div><div class="detail-box"><strong>Limits and conditions</strong><ul class="detail-list">${(item.cons||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div></div><p class="fineprint">${esc(item.assessment_basis||'Suitability profile, not a measured local skill ranking.')}</p>${links.length?`<h3>Primary references</h3><ul class="detail-list">${links.map((url,i)=>`<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Provider / author source ${i+1} ↗</a></li>`).join('')}</ul>`:''}`;
+  const participation=['gfs','ifs_control','aifs_single'].includes(id)?'A raw provider series is shown in the live desk. This model has not been fitted into a real-data Anvaya X blend.':'This is a documented candidate. It is not fetched by the live desk or assigned an operational blend weight.';
+  $('model-detail').innerHTML=`<span class="eyebrow">MODEL ANALYSIS · ${esc(item.provider||'Research')}</span><h1>${esc(item.name)}</h1><p>${esc(item.description||item.purpose)}</p><div class="model-meta"><span>${esc(modelFamily(item))}</span><span>${esc(item.architecture||'Architecture documented in source')}</span></div><div class="detail-box" style="margin-top:18px"><strong>Actual participation in Anvaya X</strong>${esc(participation)}</div><h2 style="margin-top:25px">When should it be considered?</h2><div class="detail-grid">${[['Region',context.region],['Season',context.season],['Lead time',context.lead],['Weather situation',context.weather]].map(([label,text])=>`<div class="detail-box"><strong>${label}</strong>${esc(text||'Requires local validation.')}</div>`).join('')}</div><h2 style="margin-top:25px">Deeper analysis</h2><p>${esc(context.analysis||item.purpose)}</p><div class="detail-grid"><div class="detail-box"><strong>Strengths</strong><ul class="detail-list">${(item.pros||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div><div class="detail-box"><strong>Limits and conditions</strong><ul class="detail-list">${(item.cons||[]).map(text=>`<li>${esc(text)}</li>`).join('')}</ul></div></div><p class="fineprint">${esc(item.assessment_basis||'Suitability profile, not a measured local skill ranking.')}</p>${links.length?`<h3>Primary references</h3><ul class="detail-list">${links.map((url,i)=>`<li><a href="${esc(url)}" target="_blank" rel="noopener noreferrer">Provider / author source ${i+1} ↗</a></li>`).join('')}</ul>`:''}`;
   $('model-dialog').showModal();
 }
 
-async function loadPublic() {
-  const city=$('public-city').value;
-  if(!city)return;
-  if(liveCache.has(city)){renderPublic(liveCache.get(city));return;}
-  setStatus('public-message','Retrieving current provider forecasts…');
+function setLiveSelection(selection) {
+  liveSelection = selection;
+  $('public-selected').textContent = `Selected: ${selection.label}`;
+  $('public-search').value = '';
+  $('location-results').hidden = true;
+  $('public-search').setAttribute('aria-expanded','false');
+  loadPublic();
+}
+let locationSearchTimer, locationSearchSerial = 0;
+async function searchPlaces() {
+  const query = $('public-search').value.trim();
+  const serial = ++locationSearchSerial;
+  const list = $('location-results');
+  if (query.length < 2) { list.hidden = true; $('public-search').setAttribute('aria-expanded','false'); return; }
+  list.hidden = false; $('public-search').setAttribute('aria-expanded','true');
+  list.innerHTML = '<div class="location-empty">Searching Indian places…</div>';
   try {
-    const response=await fetch(`/api/public-forecast?city=${encodeURIComponent(city)}`);
-    const data=await response.json();
-    if(!response.ok||data.data_kind!=='real'||!Array.isArray(data.rows))throw Error(data.error||'Provider response could not be read');
-    liveCache.set(city,data);renderPublic(data);
-  }catch(error){$('public-content').hidden=true;setStatus('public-message',`Live forecast unavailable: ${error.message}`,true);}
+    const response = await fetch(`/api/locations?q=${encodeURIComponent(query)}`);
+    const data = await response.json();
+    if (serial !== locationSearchSerial) return;
+    if (!response.ok) throw Error(data.error || 'Search unavailable');
+    list.innerHTML = data.locations.length ? data.locations.map(place => `<button class="location-result" role="option" type="button" data-place-id="${place.id}" data-place-label="${esc([place.name,place.district,place.state].filter(Boolean).join(', '))}"><strong>${esc(place.name)}</strong><small>${esc([place.district,place.state].filter(Boolean).join(', '))} · ${num(place.latitude,2)}°, ${num(place.longitude,2)}°</small></button>`).join('') : '<div class="location-empty">No matching Indian place found. Try a fuller name or PIN code.</div>';
+    list.querySelectorAll('[data-place-id]').forEach(button=>button.addEventListener('click',()=>setLiveSelection({key:`place:${button.dataset.placeId}`,parameter:`place_id=${encodeURIComponent(button.dataset.placeId)}`,label:button.dataset.placeLabel})));
+  } catch(error) { if (serial === locationSearchSerial) list.innerHTML=`<div class="location-empty">${esc(error.message)}. Try again shortly.</div>`; }
+}
+async function loadPublic() {
+  const selection = liveSelection;
+  const cached = liveCache.get(selection.key);
+  if (cached && Date.now() - cached.at < 600000) { renderPublic(cached.data); return; }
+  setStatus('public-message',`Retrieving current source forecasts for ${selection.label}…`);
+  try {
+    const response = await fetch(`/api/public-forecast?${selection.parameter}`);
+    const data = await response.json();
+    if (!response.ok || data.data_kind !== 'real' || !Array.isArray(data.rows)) throw Error(data.error || 'Provider response could not be read');
+    liveCache.set(selection.key,{data,at:Date.now()});
+    if (selection.key === liveSelection.key) renderPublic(data);
+  } catch(error) {
+    if (selection.key !== liveSelection.key) return;
+    $('public-content').hidden = true;
+    setStatus('public-message',`Live source forecasts unavailable: ${error.message}. Try another place or retry shortly.`,true);
+  }
 }
 function renderPublic(data) {
-  const variable=$('public-variable').value,horizon=Number($('public-horizon').value),ids=Object.keys(data.models),time=[...new Set(data.rows.map(row=>row.valid_time))].slice(0,horizon),rows=ids.map(id=>time.map(t=>data.rows.find(row=>row.model===id&&row.valid_time===t)?.[variable]??null));
-  const all=rows.flat().filter(Number.isFinite);
-  if (!all.length) { $('public-content').hidden=true;setStatus('public-message','The provider returned no usable values for this variable and horizon.',true);return; }
-  const min=Math.min(...all),max=Math.max(...all),range=Math.max(1,max-min),unit=data.units[variable];
-  $('public-content').hidden=false;setStatus('public-message',`Retrieved ${new Date(data.retrieved_at).toLocaleString('en-IN')} · ${data.attribution}`);
-  $('public-stats').innerHTML=stat('Current models',ids.length,'Named GFS, IFS and AIFS sources')+stat('Hourly targets',time.length,'Consecutive UTC target times')+stat('Observed range',`${num(min)}–${num(max)} ${unit}`,'Across displayed model forecasts')+stat('Latest update',new Date(data.retrieved_at).toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'}),'Provider retrieval time');
-  $('public-chart-title').textContent=`${({precipitation:'Hourly precipitation',temperature_2m:'2 m temperature',wind_speed_10m:'10 m wind speed'})[variable]} · ${data.city}`;
-  $('public-legend').innerHTML=ids.map((id,i)=>`<span><i style="background:${colors[i]}"></i>${esc(data.models[id].name)}</span>`).join('');
-  const paths=rows.map((series,j)=>series.map((value,i)=>value===null?null:[42+i*(810/Math.max(time.length-1,1)),255-(value-min)/range*210]).filter(Boolean).map((point,i)=>`${i?'L':'M'}${point[0].toFixed(1)} ${point[1].toFixed(1)}`).join('')).map((path,i)=>`<path d="${path}" fill="none" stroke="${colors[i]}" stroke-width="3" stroke-linejoin="round"/>`).join('');
-  const guides=[0,.25,.5,.75,1].map(frac=>`<line x1="42" x2="860" y1="${255-frac*210}" y2="${255-frac*210}" stroke="#e7ebf5"/><text x="36" y="${259-frac*210}" text-anchor="end" font-size="11" fill="#8a96aa">${num(min+frac*range,1)}</text>`).join('');
-  $('public-chart').innerHTML=`${guides}${paths}`;
-  $('public-chart-caption').textContent=`${time[0]} through ${time.at(-1)} · ${unit} · separate forecast sources, not blended`;
-  $('public-table').querySelector('thead').innerHTML=`<tr><th>Valid UTC</th>${ids.map(id=>`<th>${esc(data.models[id].name)}</th>`).join('')}</tr>`;
-  $('public-table').querySelector('tbody').innerHTML=time.slice(0,12).map((t,i)=>`<tr><td>${esc(t.slice(5,16).replace('T',' '))}</td>${rows.map(series=>`<td>${series[i]===null?'—':num(series[i],1)}</td>`).join('')}</tr>`).join('');
-  const receipt=[['Provider','Open-Meteo'],['City',data.city],['Retrieved',data.retrieved_at],['Requested coordinates',`${data.requested_coordinates.latitude}, ${data.requested_coordinates.longitude}`],['Models',ids.map(id=>data.models[id].name).join(', ')],['Record hash',data.sha256.slice(0,16)+'…']];
-  $('public-receipt').innerHTML=receipt.map(([key,value])=>`<dt>${esc(key)}</dt><dd>${esc(value)}</dd>`).join('');
+  const variable = $('public-variable').value, horizon = Number($('public-horizon').value);
+  const ids = Object.keys(data.models), times = futureTargetTimes(data.rows,Date.now(),horizon);
+  const windows = ids.map(id=>modelWindow(data.rows,id,variable,times));
+  const all = windows.flatMap(window=>window.points.map(point=>point.value)).filter(Number.isFinite);
+  if (!times.length || !all.length) {
+    $('public-content').hidden = true;
+    setStatus('public-message','The provider returned no future values for this target. Retry shortly.',true);
+    return;
+  }
+  const min = Math.min(...all), max = Math.max(...all), range = Math.max(1,max-min), unit = data.units[variable];
+  $('threshold-unit').textContent = unit;
+  const thresholdText = $('public-threshold').value.trim();
+  const threshold = thresholdText !== '' && Number.isFinite(Number(thresholdText)) ? Number(thresholdText) : null;
+  $('public-content').hidden = false;
+  setStatus('public-message',`Current provider series retrieved ${formatIST(data.retrieved_at)} · ${data.attribution}`);
+  $('public-stats').innerHTML = stat('Selected place',data.city,data.requested_location?.state || 'India')
+    + stat('Future target hours',times.length,`${formatIST(times[0])} onward`)
+    + stat('Model value range',`${num(min)}–${num(max)} ${unit}`,'Across the displayed source forecasts')
+    + stat('Retrieved at',formatIST(data.retrieved_at),'Provider retrieval; model cycles not pinned');
+  $('public-chart-title').textContent = `${({precipitation:'Hourly precipitation',temperature_2m:'2 m temperature',wind_speed_10m:'10 m wind speed'})[variable]} · ${data.city}`;
+  $('public-legend').innerHTML = ids.map((id,i)=>`<span><i style="background:${colors[i]}"></i>${esc(data.models[id].name)}</span>`).join('');
+  const left = 47, right = 865, top = 32, bottom = 258;
+  const guides = [0,.25,.5,.75,1].map(frac=>`<line x1="${left}" x2="${right}" y1="${bottom-frac*(bottom-top)}" y2="${bottom-frac*(bottom-top)}" stroke="#e5ece7"/><text x="39" y="${bottom-frac*(bottom-top)+4}" text-anchor="end" font-size="11" fill="#78918b">${num(min+frac*range,1)}</text>`).join('');
+  const xTicks = [0,.25,.5,.75,1].map(frac=>{
+    const i = Math.round(frac*(times.length-1));
+    return `<text x="${left+frac*(right-left)}" y="291" text-anchor="middle" font-size="10" fill="#78918b">${esc(formatIST(times[i],{date:false}))}</text>`;
+  }).join('');
+  const paths = windows.map((window,j)=>{
+    let drawing = false;
+    const path = window.points.map((point,i)=>{
+      if (!Number.isFinite(point.value)) { drawing=false; return ''; }
+      const next = `${drawing?'L':'M'}${(left+i*(right-left)/Math.max(times.length-1,1)).toFixed(1)} ${(bottom-(point.value-min)/range*(bottom-top)).toFixed(1)}`;
+      drawing=true; return next;
+    }).join(' ');
+    return `<path d="${path}" fill="none" stroke="${colors[j]}" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>`;
+  }).join('');
+  const thresholdLine = threshold !== null && threshold >= min && threshold <= max
+    ? `<line x1="${left}" x2="${right}" y1="${bottom-(threshold-min)/range*(bottom-top)}" y2="${bottom-(threshold-min)/range*(bottom-top)}" stroke="#ad6947" stroke-width="2" stroke-dasharray="6 5"/><text x="${right}" y="${bottom-(threshold-min)/range*(bottom-top)-5}" text-anchor="end" font-size="10" fill="#ad6947">Your threshold ${num(threshold,1)} ${esc(unit)}</text>` : '';
+  $('public-chart').innerHTML = guides + xTicks + thresholdLine + paths;
+  $('public-chart-caption').textContent = `${formatIST(times[0])} to ${formatIST(times.at(-1))} · ${unit} · separate source forecasts, not a blend`;
+  $('public-model-cards').innerHTML = ids.map((id,i)=>{
+    const window=windows[i];
+    const primary=!window.count?'Unavailable':variable==='precipitation' ? `${num(window.sum,1)} mm` : `${num(window.max,1)} ${unit}`;
+    const label=variable==='precipitation'?(window.count===times.length?'Total for selected window':'Sum of available hours'):'Highest value in selected window';
+    const detail=window.count ? `Peak hour ${num(window.max,1)} ${unit} at ${formatIST(window.maxTime)} · ${window.count} available hours` : 'No usable values in this window';
+    const crossings=threshold===null?'':`<small>${window.points.filter(point=>Number.isFinite(point.value)&&point.value>threshold).length} forecast hour(s) above your ${num(threshold,1)} ${esc(unit)} threshold.</small>`;
+    return `<div class="model-outlook"><strong><span style="color:${colors[i]}">●</span> ${esc(data.models[id].name)}</strong><b>${esc(primary)}</b><small>${label}. ${esc(detail)}</small>${crossings}</div>`;
+  }).join('');
+  $('public-table').querySelector('thead').innerHTML = `<tr><th>${variable==='precipitation'?'Hour ending (IST)':'Valid time (IST)'}</th>${ids.map(id=>`<th>${esc(data.models[id].name)} (${esc(unit)})</th>`).join('')}</tr>`;
+  $('public-table').querySelector('tbody').innerHTML = times.map((time,i)=>`<tr><td>${esc(formatIST(time))}</td>${windows.map(window=>`<td>${window.points[i].value===null?'—':num(window.points[i].value,1)}</td>`).join('')}</tr>`).join('');
+  const receipt = [
+    ['Provider','Open-Meteo'],['Requested place',[data.city,data.requested_location?.state].filter(Boolean).join(', ')],
+    ['Retrieved',formatIST(data.retrieved_at)],['First target',formatIST(times[0])],['Last target',formatIST(times.at(-1))],
+    ['Requested coordinates',`${num(data.requested_coordinates.latitude,4)}, ${num(data.requested_coordinates.longitude,4)}`],
+    ['Provider grid',`${num(data.returned_coordinates.latitude,4)}, ${num(data.returned_coordinates.longitude,4)}`],
+    ['Model cycles','Not pinned by latest-series endpoint'],['SHA-256 receipt',data.sha256],
+  ];
+  $('public-receipt').innerHTML = receipt.map(([key,value])=>`<dt>${esc(key)}</dt><dd>${esc(value)}</dd>`).join('');
 }
 
 async function start() {
   document.querySelectorAll('[data-go]').forEach(button=>button.addEventListener('click',()=>{location.hash=button.dataset.go;}));
   window.addEventListener('hashchange',()=>nav(location.hash.slice(1)));
-  const urls=['/data/demo.json','/data/gate.json','/data/catalogue.json','/data/benchmark.json'];
-  try {
-    const responses=await Promise.all(urls.map(url=>fetch(url)));
-    if(responses.some(response=>!response.ok))throw Error('A research data file could not be loaded');
-    [demo,gate,catalogue,benchmark]=await Promise.all(responses.map(response=>response.json()));
-    if(demo.model_digest!==gate.model_digest||benchmark.source_model_digest!==gate.model_digest)throw Error('Model and evidence versions do not match');
-    fillSelect($('public-city'),['Mumbai','Delhi','Bengaluru','Chennai','Kolkata','Hyderabad','Guwahati','Jaipur'],x=>x);
-    $('public-city').value='Mumbai';
-    $('lab-variable').addEventListener('change',chooseLocation);$('lab-location').addEventListener('change',chooseCase);$('lab-case').addEventListener('change',resetCase);
-    ['input-lead','input-date','input-coast','input-elevation','map-source'].forEach(id=>$(id).addEventListener('input',renderLab));
-    $('input-situation').addEventListener('change',applyPattern);$('reset-scenario').addEventListener('click',resetCase);
-    document.querySelectorAll('[data-lab-tab]').forEach(button=>button.addEventListener('click',()=>{labTab=button.dataset.labTab;$('panel-weights').hidden=labTab!=='weights';$('panel-network').hidden=labTab!=='network';document.querySelectorAll('[data-lab-tab]').forEach(tab=>tab.setAttribute('aria-selected',String(tab===button)));}));
-    ['evidence-variable','evidence-metric'].forEach(id=>$(id).addEventListener('change',renderEvidence));
-    ['model-search','model-family','model-variable'].forEach(id=>$(id).addEventListener('input',renderAtlas));
-    ['public-city','public-variable','public-horizon'].forEach(id=>$(id).addEventListener('change',()=>$('public-city').id===id?loadPublic():liveCache.has($('public-city').value)?renderPublic(liveCache.get($('public-city').value)):loadPublic()));
-    $('close-model').addEventListener('click',()=>$('model-dialog').close());
-    chooseLocation();renderEvidence();renderAtlas();nav(location.hash.slice(1));
-  } catch(error) { setStatus('lab-message',`Research data unavailable: ${error.message}`,true);setStatus('public-message','Live forecast desk is still available; choose a city to retry.');nav(location.hash.slice(1)); }
+  $('lab-variable').addEventListener('change',chooseLocation);
+  $('lab-location').addEventListener('change',chooseCase);
+  $('lab-case').addEventListener('change',resetCase);
+  ['input-lead','input-date','input-coast','input-elevation','map-source'].forEach(id=>$(id).addEventListener('input',renderLab));
+  $('input-situation').addEventListener('change',applyPattern);
+  $('reset-scenario').addEventListener('click',resetCase);
+  document.querySelectorAll('[data-lab-tab]').forEach(button=>button.addEventListener('click',()=>{
+    labTab=button.dataset.labTab;
+    $('panel-weights').hidden=labTab!=='weights';$('panel-network').hidden=labTab!=='network';
+    document.querySelectorAll('[data-lab-tab]').forEach(tab=>tab.setAttribute('aria-pressed',String(tab===button)));
+  }));
+  ['evidence-variable','evidence-metric'].forEach(id=>$(id).addEventListener('change',renderEvidence));
+  ['model-search','model-family','model-variable'].forEach(id=>$(id).addEventListener('input',renderAtlas));
+  ['public-variable','public-horizon'].forEach(id=>$(id).addEventListener('change',()=>{
+    if(id==='public-variable')$('public-threshold').value='';
+    const cached=liveCache.get(liveSelection.key);
+    if(cached)renderPublic(cached.data); else loadPublic();
+  }));
+  $('public-threshold').addEventListener('input',()=>{
+    const cached=liveCache.get(liveSelection.key);
+    if(cached)renderPublic(cached.data);
+  });
+  document.querySelectorAll('[data-city]').forEach(button=>button.addEventListener('click',()=>setLiveSelection({
+    key:`city:${button.dataset.city}`,parameter:`city=${encodeURIComponent(button.dataset.city)}`,
+    label:button.dataset.city,
+  })));
+  $('public-search').addEventListener('input',()=>{clearTimeout(locationSearchTimer);locationSearchTimer=setTimeout(searchPlaces,300);});
+  $('public-search').addEventListener('keydown',event=>{
+    if(event.key==='Escape'){$('location-results').hidden=true;$('public-search').setAttribute('aria-expanded','false');}
+    if(event.key==='Enter')$('location-results').querySelector('[data-place-id]')?.click();
+  });
+  $('close-model').addEventListener('click',()=>$('model-dialog').close());
+  $('model-dialog').addEventListener('click',event=>{if(event.target===$('model-dialog'))$('model-dialog').close();});
+  nav(location.hash.slice(1));
 }
 start();

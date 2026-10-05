@@ -370,12 +370,12 @@
     },
     {
       "id": "graphcast_operational",
-      "name": "GraphCast Operational",
+      "name": "GraphCastGFS archive",
       "version": "GraphCast_operational",
       "model_class": "ai",
       "kind": "forecast_expert",
       "enabled": false,
-      "status": "initial_public_candidate",
+      "status": "research_archive_candidate",
       "purpose": "Initial public AI rainfall expert using NOAA AIWP hindcasts.",
       "capabilities": {
         "rainfall": true,
@@ -393,7 +393,8 @@
       "india_skill_metrics": null,
       "evidence_urls": [
         "https://registry.opendata.aws/aiwp/",
-        "https://github.com/google-deepmind/weathernext/blob/main/docs/weathernext1_graph/README.md"
+        "https://github.com/google-deepmind/weathernext/blob/main/docs/weathernext1_graph/README.md",
+        "https://registry.opendata.aws/noaa-nws-graphcastgfs-pds/"
       ],
       "ensemble": false,
       "notes": [
@@ -402,7 +403,7 @@
       ],
       "provider": "Google DeepMind; NOAA/CIRA archive",
       "architecture": "Multiscale graph neural network",
-      "description": "Operational checkpoint maps atmospheric states through a multiscale mesh to future weather.",
+      "description": "Archived GraphCastGFS research/experimental product; distinct from NOAA's newer operational AIGFS.",
       "pros": [
         "Named public checkpoint",
         "Native precipitation in the NOAA archive"
@@ -428,7 +429,7 @@
         "season": "All-season candidate, with extreme monsoon rainfall as a separate verification stratum.",
         "lead": "Medium-range atmospheric guidance, evaluated only on its documented cycle and lead support.",
         "weather": "Large-scale monsoon flow and six-hour rain where the selected archive provides that field.",
-        "analysis": "GraphCast's graph architecture offers a different data-driven forecast family. NOAA/CIRA archive products can include six-hour precipitation, but the initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
+        "analysis": "The older GraphCastGFS archive represents a different data-driven forecast family and is distinct from NOAA's newer operational AIGFS. NOAA/CIRA archive products can include six-hour precipitation, but initialization source and retrospective upload timing matter. Calibrate its rain tails rather than treating smooth fields as local cloudburst truth."
       }
     },
     {
@@ -1595,7 +1596,7 @@
         "A proposed pipeline, not a documented operational source. Compatibility, derived fields and skill are not established.",
         "Record both AIFS and WRF versions and propagate the driving checkpoint training cutoff."
       ],
-      "provider": "Proposed BharatBlend research integration",
+      "provider": "Proposed Anvaya X research integration",
       "architecture": "AIFS boundary forcing into configured WRF",
       "description": "Proposed coupling experiment; no operational source or completed integration exists here.",
       "pros": [
@@ -1687,6 +1688,348 @@
         "weather": "Can sample plausible local texture, but cannot repair a wrong large-scale storm track.",
         "analysis": "CorrDiff is a conditional downscaler, not an independent global weather forecast. Treat generated fine detail as uncertain scenarios. A Mumbai deployment would require paired high-resolution observations, conditioning data and neighborhood verification to avoid convincing but misplaced extremes."
       }
+    },
+    {
+      "id": "bharatfs",
+      "name": "IMD BharatFS",
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "provider": "India Meteorological Department / MoES",
+      "architecture": "High-resolution global physical numerical weather prediction",
+      "description": "India-developed 6 km global forecast system with strong relevance to monsoon evaluation.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": false,
+      "status": "candidate_requires_data_access",
+      "access": "Public forecast plots are available; a versioned machine-readable raw archive was not verified.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "India-specific operational context",
+        "Fine global grid is relevant to coastal and terrain-sensitive comparisons"
+      ],
+      "cons": [
+        "Raw issued forecast archive access needs confirmation",
+        "Grid spacing does not establish local extreme-rain skill"
+      ],
+      "use_context": {
+        "region": "Global forecast with direct relevance to India; prioritize coastal and Western Ghats verification sites.",
+        "season": "All seasons; monsoon and dry-season calibration should be reported separately.",
+        "lead": "Operational short-to-medium-range candidate; compare equal valid times and pinned issue cycles.",
+        "weather": "Rainfall, heat and wind guidance; assess intense monsoon rain against independent gauges.",
+        "analysis": "BharatFS is a valuable India-provider anchor for the atlas. It is not connected to Anvaya X's live feed or trained router. Before it receives any blend weight, obtain timestamped raw forecasts, confirm variables and accumulation windows, then test independently at matched Indian observation sites."
+      },
+      "evidence_urls": [
+        "https://nwp.imd.gov.in/bharatfs_archive.php",
+        "https://metnet.imd.gov.in/docs/imdnews/ANNUAL_REPORT2025English.pdf"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "aigfs",
+      "name": "NOAA AIGFS",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "provider": "NOAA / NCEP",
+      "architecture": "Operational global AI forecast system",
+      "description": "NOAA's operational AI global deterministic guidance, distinct from older GraphCastGFS archives.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": false,
+      "status": "public_product_not_integrated",
+      "access": "Operational NOAA product listings; issued archive ingestion is not implemented in Anvaya X.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Named operational AI product",
+        "Useful physical-versus-AI comparator when issue cycles match"
+      ],
+      "cons": [
+        "Deterministic trajectory needs separate uncertainty calibration",
+        "Do not transfer skill claims from older GraphCastGFS versions"
+      ],
+      "use_context": {
+        "region": "Global product can cover Indian locations; local station and rain-gauge verification remains essential.",
+        "season": "Year-round candidate, with separate Southwest-monsoon and dry-season checks.",
+        "lead": "Short through extended medium range; compare the exact six-hourly valid times and issue cycles.",
+        "weather": "Large-scale rain, heat and wind patterns; localized extremes need calibration and spatial checks.",
+        "analysis": "AIGFS adds an operational AI family to a physical-model comparison. It is not yet fetched by this site's live desk, nor fitted into the research gate. Archive issue and publication times before training; do not treat shared initialization or model lineage as independent evidence of skill."
+      },
+      "evidence_urls": [
+        "https://epic.noaa.gov/ai/eagle-overview/",
+        "https://nomads.ncep.noaa.gov/"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "aigefs",
+      "name": "NOAA AIGEFS",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "provider": "NOAA / NCEP",
+      "architecture": "Operational AI ensemble forecast system",
+      "description": "Multiple AI forecast members for probabilistic global guidance.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": true,
+      "status": "public_product_not_integrated",
+      "access": "NOAA operational product listings; member archive ingestion is not implemented here.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Member-level scenarios can support event probabilities",
+        "Operational AI ensemble comparator"
+      ],
+      "cons": [
+        "Shared AI lineage creates correlated errors",
+        "HGEFS already includes AIGEFS and GEFS, so avoid double counting"
+      ],
+      "use_context": {
+        "region": "Global ensemble available over India; assess reliability by terrain and coastal regime.",
+        "season": "All seasons; test monsoon heavy-rain calibration independently from dry-season events.",
+        "lead": "Medium-range uncertainty guidance where complete, time-matched member archives exist.",
+        "weather": "Heavy-rain, heat and high-wind event probabilities after local reliability assessment.",
+        "analysis": "AIGEFS is a candidate probabilistic AI expert, not a current Anvaya X input. Its full member distribution may add information that a deterministic AI run cannot. HGEFS is a combination of AIGEFS and GEFS, so treating all three as independent blend experts would overstate source diversity."
+      },
+      "evidence_urls": [
+        "https://www.nco.ncep.noaa.gov/pmb/products/aigefs/",
+        "https://www.emc.ncep.noaa.gov/users/verification/global/aigefs/prod/main.php"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "fuxi_2_1",
+      "name": "FuXi 2.1",
+      "model_class": "ai",
+      "kind": "forecast_expert",
+      "provider": "Fudan University / SAIS",
+      "architecture": "RoPE-conditioned Swin transformer with variable-aware decoder",
+      "description": "Open research checkpoint producing 0.25° global fields at six-hour steps to ten days.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": false,
+      "status": "research_checkpoint_not_integrated",
+      "access": "Downloadable research weights and inference code; no verified live forecast feed here.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Precipitation and near-surface wind are native outputs",
+        "Open checkpoint enables controlled research"
+      ],
+      "cons": [
+        "Deterministic forecast requires probability calibration",
+        "Published extreme-event comparison covers limited sample cases"
+      ],
+      "use_context": {
+        "region": "Global grid includes India, but no Mumbai or India-specific advantage has been established here.",
+        "season": "Year-round research candidate; fine-tune or calibrate monsoon and non-monsoon periods separately.",
+        "lead": "Six-hourly steps to 240 hours; preserve the six-hour precipitation accumulation semantics.",
+        "weather": "Heavy rain and strong wind structure are research motivations; validate each threshold locally.",
+        "analysis": "FuXi 2.1 is technically attractive because its published checkpoint includes precipitation, temperature and 10 m wind fields. The model card itself limits its extreme-event scorecard to sample cases. To use it in the blend, run its exact checkpoint on archived initial states, align six-hour intervals, and test against independent India observations."
+      },
+      "evidence_urls": [
+        "https://huggingface.co/tpys/fuxi-2.1"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "icon_global",
+      "name": "DWD ICON Global",
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "provider": "Deutscher Wetterdienst",
+      "architecture": "Icosahedral non-hydrostatic global dynamical core",
+      "description": "Open global physical guidance with forecast GRIB files for surface and upper-air fields.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": false,
+      "status": "public_product_not_integrated",
+      "access": "Live open GRIB directories; versioned archive and decoding still need integration.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Distinct physical-model provider",
+        "Public issued forecast files"
+      ],
+      "cons": [
+        "GRIB field and interval decoding is required",
+        "No locally measured superiority is implied by resolution"
+      ],
+      "use_context": {
+        "region": "Global coverage includes India; compare Western Ghats and coastal points against observations.",
+        "season": "Year-round physical comparator with monsoon-specific bias and reliability analysis.",
+        "lead": "Short-to-medium range; use only leads shared by all comparator sources.",
+        "weather": "Synoptic rain, near-surface heat and wind; convection-scale extremes need local verification.",
+        "analysis": "ICON Global can improve ensemble diversity because it is a separate physical modeling system from GFS and IFS. Its public GRIB files are a realistic integration route, but operational use still requires a historical archive, cycle timestamps, unit conversion and calibrated error estimates."
+      },
+      "evidence_urls": [
+        "https://opendata.dwd.de/weather/nwp/icon/grib/",
+        "https://www.dwd.de/EN/ourservices/nwp_icon_tutorial/pdf_volume/icon_tutorial2025_en.pdf?__blob=publicationFile&v=3"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "icon_eps_global",
+      "name": "DWD ICON-EPS Global",
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "provider": "Deutscher Wetterdienst",
+      "architecture": "Perturbed global ICON physical ensemble",
+      "description": "Open ICON ensemble members that can support probabilistic weather scenarios.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": true,
+      "status": "public_product_not_integrated",
+      "access": "Live open GRIB member directories; matched archive is not connected.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Member spread can inform event uncertainty",
+        "Distinct global ensemble-provider candidate"
+      ],
+      "cons": [
+        "Shares modeling lineage with ICON control",
+        "Lead and cycle availability differ; verify exact product schedule"
+      ],
+      "use_context": {
+        "region": "Global coverage includes India; coarse ensemble grid still needs gauge-scale assessment.",
+        "season": "All seasons with independent monsoon and dry-season reliability diagrams.",
+        "lead": "Short-to-medium range within the exact available run and member horizon.",
+        "weather": "Heavy-rain, heat and wind scenarios where ensemble members provide a calibrated distribution.",
+        "analysis": "ICON-EPS is an uncertainty source rather than a guaranteed better deterministic forecast. When ICON control and ICON-EPS appear together, their common model lineage must be accounted for. Verify member completeness and event reliability before assigning them simultaneous weights."
+      },
+      "evidence_urls": [
+        "https://opendata.dwd.de/weather/nwp/icon-eps/grib/",
+        "https://www.dwd.de/DWD/forschung/nwv/fepub/icon_database_main.pdf"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "gdps_hybrid",
+      "name": "ECCC GDPS Hybrid",
+      "model_class": "hybrid",
+      "kind": "forecast_expert",
+      "provider": "Environment and Climate Change Canada",
+      "architecture": "GEM atmosphere-ocean physical model with large-scale spectral nudging toward GEML AI",
+      "description": "Operational global hybrid that couples physical dynamics with AI guidance for large-scale temperature and wind.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": false,
+      "status": "public_product_not_integrated",
+      "access": "Public GDPS 15 km products via ECCC Datamart and GeoMet; not fetched by this site.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Real operational hybrid example",
+        "Public global forecast route"
+      ],
+      "cons": [
+        "GEML-guided and GDPS output errors are dependent",
+        "Rainfall remains a physical-model output requiring local evaluation"
+      ],
+      "use_context": {
+        "region": "Global 15 km atmospheric guidance covers India, including coastal and inland regions.",
+        "season": "All seasons; evaluate monsoon precipitation and heat separately before blending.",
+        "lead": "Two runs daily to ten days; align cycles and valid times with other candidates.",
+        "weather": "Large-scale rain, heat and wind patterns; local convective rain still needs observation checks.",
+        "analysis": "GDPS is a particularly instructive hybrid: GEM dynamics are nudged toward GEML's AI large-scale temperature and horizontal winds. It is not an independent GEML-plus-GDPS pair, and its precipitation must not be described as a direct GEML forecast. Anvaya X does not currently ingest this product."
+      },
+      "evidence_urls": [
+        "https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps_en/"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
+    },
+    {
+      "id": "geps_canada",
+      "name": "ECCC GEPS",
+      "model_class": "nwp",
+      "kind": "forecast_expert",
+      "provider": "Environment and Climate Change Canada",
+      "architecture": "Global physical ensemble prediction system",
+      "description": "Public Canadian global ensemble guidance with member-level uncertainty fields.",
+      "capabilities": {
+        "rainfall": true,
+        "temperature": true,
+        "wind_uv": true,
+        "gust": null
+      },
+      "ensemble": true,
+      "status": "public_product_not_integrated",
+      "access": "Open ECCC Datamart products; historical member archive matching is pending.",
+      "archive_verified": false,
+      "local_inference_installed": false,
+      "india_skill_metrics": null,
+      "pros": [
+        "Independent provider ensemble candidate",
+        "Member-level scenarios for event risk"
+      ],
+      "cons": [
+        "Coarse global grid cannot resolve city-scale rainfall",
+        "Calibrating a member distribution requires matched observations"
+      ],
+      "use_context": {
+        "region": "Global ensemble includes India, but city and terrain effects are unresolved at coarse scale.",
+        "season": "All seasons; assess monsoon event reliability separately from winter and pre-monsoon heat.",
+        "lead": "Medium-range ensemble guidance up to the documented product horizon.",
+        "weather": "Probabilistic rain, heat and wind guidance after threshold-specific calibration.",
+        "analysis": "GEPS adds a separate ensemble-provider family and can expose scenario spread when deterministic models disagree. Its open product route does not by itself supply a verified Indian skill archive. Preserve member IDs, forecast cycles and valid intervals for honest evaluation."
+      },
+      "evidence_urls": [
+        "https://eccc-msc.github.io/open-data/msc-data/nwp_geps/readme_geps-datamart_en/",
+        "https://open.canada.ca/data/en/dataset/6d9dd2f8-202e-58cb-a110-e2168832aacb"
+      ],
+      "catalogue_only": true,
+      "enabled": false,
+      "assessment_basis": "Provider documentation and engineering suitability; not measured Indian forecast skill."
     }
   ],
   "datasets": [
@@ -2202,7 +2545,7 @@
       "name": "Open-Meteo named-model forecast API",
       "kind": "forecast",
       "description": "Provider-served NOAA GFS, ECMWF IFS and AIFS model forecasts.",
-      "coverage": "Selected Indian cities; three days of hourly provider output",
+      "coverage": "Searchable Indian places and up to 96 future hourly provider values",
       "project_role": "Public forecast explorer; not input to the existing trained gate",
       "variables": [
         "temperature_2m",
@@ -2242,7 +2585,7 @@
         "Finite values and missing-value preservation",
         "SHA-256 receipt"
       ],
-      "reference_review": "Documentation reviewed and Delhi HTTP request verified on 2026-09-26"
+      "reference_review": "Provider forecast and geocoding documentation reviewed on 2026-09-28"
     }
   ]
 }

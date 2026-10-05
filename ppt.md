@@ -1,18 +1,18 @@
-# BharatBlend — presentation plan and technical source of truth
+# Anvaya X — presentation plan and technical source of truth
 
-**Project:** SIH_PS_81 · **Prepared:** 27 September 2026 · **Audience:** hackathon judges, meteorologists, disaster managers and software reviewers.
+**Project:** SIH_PS_81 · **Updated:** 28 September 2026 · **Audience:** hackathon judges, meteorologists, disaster managers and software reviewers.
 
 This is the single project guide for building the presentation. Make the slides in your own style. The recommended main deck has **14 slides, 7–9 minutes of speaking and 3 minutes of demo/questions**. Put equations, model profiles, validation detail and source links in an appendix or speaker notes. Every slide should identify whether a visual shows a real public forecast, a synthetic software demonstration, a measured held-out result or a proposed capability. The system has not demonstrated superior forecasting skill on real Indian observations.
 
 ## 1. The decision in one sentence
 
-> **BharatBlend learns which issued forecast sources to trust for a particular place, lead, season and weather context, then makes the blend, uncertainty and source contributions auditable.**
+> **Anvaya X learns which issued forecast sources to trust for a particular place, lead, season and weather context, then makes the blend, uncertainty and source contributions auditable.**
 
 The idea is a **probabilistic, evidence-first model router for Indian weather**. It joins physical NWP, ensembles and AI forecast products at exact valid times; calibrates each eligible source; uses a contextual gate to choose nonnegative mixture weights; produces rainfall, temperature and joint wind distributions; and explains an issued event probability numerically. A weather model is allowed into the mixture only after its variable, version, initialization provider, issue time, accumulation period and calibrated lead are verified. The present live public forecast page compares named providers; the trained routing demonstration is explicitly synthetic. The high-impact national, flood and heat applications are research and operational milestones.
 
 ### The opening hook
 
-On 26–27 July 2005, Mumbai's Santacruz observatory recorded about **944 mm in 24 hours**, while Colaba, roughly 30 km south, recorded about **74 mm** for the same period. The contrast shows why a single coarse model or city-wide number can miss the location of danger; it is **historical motivation**, not a BharatBlend hindcast. Use the paired values on slide 2 with both station names, the exact 24-hour interval and a citation to [the IMD-associated MAUSAM analysis](https://mausamjournal.imd.gov.in/Vol60spl.pdf). A practical flood warning still requires independently verified rainfall forecasts and hydrologic exposure; probability of rain is not probability of flooding.
+On 26–27 July 2005, Mumbai's Santacruz observatory recorded about **944 mm in 24 hours**, while Colaba, roughly 30 km south, recorded about **74 mm** for the same period. The contrast shows why a single coarse model or city-wide number can miss the location of danger; it is **historical motivation**, not an Anvaya X hindcast. Use the paired values on slide 2 with both station names, the exact 24-hour interval and a citation to [the IMD-associated MAUSAM analysis](https://mausamjournal.imd.gov.in/Vol60spl.pdf). A practical flood warning still requires independently verified rainfall forecasts and hydrologic exposure; probability of rain is not probability of flooding.
 
 ### The three strongest reasons to select this project
 
@@ -230,7 +230,7 @@ These results change the pitch: we have built an **auditable research platform w
 
 ## 8. Innovation, defensibility and benefits
 
-| Existing pattern | BharatBlend distinction | Why it matters | How to substantiate it |
+| Existing pattern | Anvaya X distinction | Why it matters | How to substantiate it |
 |---|---|---|---|
 | Deterministic grid-point expert gating, including published MoWE | Probabilistic scalar/vector mixture with per-event arithmetic receipts and source eligibility audit | Warnings require calibrated risk and an inspectable cause of the *calculation* | Show exact receipt reconstruction, threshold reliability, event Brier score and code review. |
 | Opaque direct ensemble stacking | Intrinsically additive gate with pairwise logit differences; separate accuracy challenger | A forecaster can ask why a source dominates at this location and lead | Recompute every displayed weight and contribution; compare skill to XGBoost and EMOS. |
@@ -271,9 +271,9 @@ Schedule, retention, alert dissemination, access control, rollback and instituti
 
 ## 10. Demonstration script and likely judge questions
 
-1. Open the **Vercel frontend** on a real public forecast city. Select Mumbai and temperature, then wind and hourly total precipitation. Point to the provider attribution, retrieval time and exact named models. Explain that between-model range is descriptive disagreement.
-2. Open **Blend laboratory**. Select rainfall, Mumbai, then **Illustrative high-rain case** in the Example control. Point at the source weights and the 64.5 mm threshold card; the exact contribution values appear under the event probability. If one model is nearly zero, explain that a gate may suppress an expert in the fixture; no real GraphCast skill conclusion follows.
-3. Remove GEFS. Show a newly computed stored counterfactual with changed weights and event probability. Open eligibility reasons for missing sources. Say this demonstrates handling of an unavailable source in the fixture.
+1. Open **Live forecasts**. Search an Indian place or use Mumbai, then compare temperature, wind and hourly precipitation in IST. Point to the provider attribution, retrieval time, complete future-hour table and exact named models. Explain that between-model range is descriptive disagreement; the optional user threshold is a comparison aid, not an official warning.
+2. Open **Explain the blend**. Select rainfall, Mumbai, then **Illustrative high-rain case**. Point at the source weights and the 64.5 mm threshold card; each source contribution is shown beneath the event probability. If one model is nearly zero, explain that a gate may suppress an expert in the generated fixture; no real GraphCast skill conclusion follows.
+3. Expand **Advanced context** and remove GEFS. Show the recomputed weights and event probability, then open the full calculation receipt for eligibility details. The browser recalculates the exported trained gate while holding source distributions fixed; it does not issue a new real forecast.
 4. Open **Evidence / research**. Show the held-out methods table. State plainly that the direct baseline won the synthetic exercise. Show the proposed real evaluation gate and the NOAA archive/observation gap.
 5. Close on the USP: a forecast probability that a reviewer can reconstruct and a scientific process that can say “not yet good enough” before public use.
 
@@ -315,9 +315,9 @@ $env:BHARATBLEND_DATA_DIR="artifacts/research_v2"
 
 Use `--no-accuracy` for the synthetic run if PyTorch is not installed. XGBoost is an optional research dependency. The prepared research workspace has a `models.json`, `metrics.json`, `experiments.json`, `benchmark.json` and individual case scores; `artifacts/` and `.env` are ignored from source control. Real-data training requires canonical forecast and observation files plus explicit UTC `--train-end` and `--dev-end`. Never train using the named public latest snapshot directly: it lacks independent verifying observations and a fixed as-issued archive. The local API exposes `/health`, `/cases`, `/forecast`, `/benchmark`, `/experiments`, `/catalogue`, `/explain/config`, `/public/forecast` and explicit `/public/refresh`; visit `http://127.0.0.1:8000/docs` while running locally.
 
-The website is exported from this workspace with `scripts/export_frontend.py`, which selects prepared receipts for a bounded number of synthetic case examples and writes static JSON under `site/data/`. The web app must display synthetic provenance next to every such value. Vercel receives the static frontend and an `/api/public-forecast` Node route; it does not receive `.env`, local research artifacts, trained Python checkpoints or raw provider credentials. The existing private GitHub repository is `SIH_PS_81`; link/push only after confirming the account connection and repository owner. In Vercel, import that connected repository with **Framework: Other** and **Output Directory: `site`**. The site's ability to fetch real public data should be tested after the remote deployment; local smoke tests do not prove external provider access or uptime.
+The website is exported from this workspace with `scripts/export_frontend.py`, which selects prepared receipts for a bounded number of synthetic case examples and writes static JSON under `site/data/`. The web app displays synthetic provenance next to such values. Vercel receives the static frontend, exported **synthetic** gate parameters, and Node routes for named public forecasts and Indian-place search; it does not receive `.env`, raw research archives, the Python runtime or provider credentials. The private GitHub repository is `SIH_PS_81`. In Vercel, import that repository with **Framework: Other** and **Output Directory: `site`**. The hosted public feed must be checked after deployment; a successful localhost request does not establish external uptime.
 
-## Appendix A. All 27 model candidate profiles in one matrix
+## Appendix A. The 27 core model profiles and eight additional atlas candidates
 
 **Status key:** `candidate` means described in a registry; it does not mean downloaded, trained, licensed for redistribution or scored over India. Capability `unknown` must fail closed. This quick matrix covers every profile; machine-readable field-level metadata remain in `configs/model_registry.json` and are displayed in the product atlas.
 
@@ -329,7 +329,7 @@ The website is exported from this workspace with `scripts/export_frontend.py`, w
 | ECMWF IFS ENS | Physical ensemble comparator | Member archive and licensed access. |
 | AIFS Single | AI deterministic surface/upper-air source | Check exact v2 or earlier checkpoint and variables. |
 | AIFS ENS | AI ensemble source | Match ensemble version and member support. |
-| GraphCast Operational | AI global source, including documented six-hour rain in NOAA/CIRA | GFS/IFS initialization and training cutoff; coarse-grid extremes need verification. |
+| GraphCastGFS archive | Older AI global research/experimental source, including documented six-hour rain in NOAA/CIRA | Distinguish from newer NOAA AIGFS; initialization and cutoff need audit. |
 | Pangu-Weather | AI global temperature/wind context | NOAA/CIRA archive lists no native precipitation. |
 | FourCastNet v2-small | AI global temperature/wind context | NOAA/CIRA archive lists no native precipitation. |
 | FourCastNet 3 | AI research candidate | Check exact released variables, access, version and archive. |
@@ -350,6 +350,19 @@ The website is exported from this workspace with `scripts/export_frontend.py`, w
 | WRF configured regional pipeline | Dynamical local forecast method | Needs local setup, initialization archive, physics evaluation. |
 | AIFS-driven WRF pipeline | Hybrid boundary-driven research pipeline | Requires coupled run and full precipitation/wind validation. |
 | CorrDiff | Conditional generative downscaler | Needs India-specific paired training and should not be counted as an independent global forecast. |
+
+The website atlas adds eight documented candidates without inserting them into the trained source registry. This is a coverage and research update, not a measured India skill gain. These are useful because they add a current India-provider system, newly operational AI products, an open extreme-oriented checkpoint, and independent physical/ensemble providers. Avoid treating related systems as independent experts merely because they have separate product names.
+
+| Added candidate | What it contributes | Participation and restriction | Primary source |
+|---|---|---|---|
+| IMD BharatFS | India-developed high-resolution physical forecast anchor | Public plots found; machine-readable as-issued archive still needs access verification. | [IMD BharatFS archive](https://nwp.imd.gov.in/bharatfs_archive.php) |
+| NOAA AIGFS | New operational deterministic AI family | Not fetched by the current live desk; do not transfer GraphCastGFS conclusions. | [NOAA AI overview](https://epic.noaa.gov/ai/eagle-overview/) |
+| NOAA AIGEFS | Operational AI ensemble scenarios | Not integrated; HGEFS already contains AIGEFS and GEFS, so avoid double counting. | [NOAA AIGEFS products](https://www.nco.ncep.noaa.gov/pmb/products/aigefs/) |
+| FuXi 2.1 | Open 0.25° research checkpoint with rain, temperature and wind output | Its model card's extreme comparison uses limited cases, not India validation. | [FuXi 2.1 model card](https://huggingface.co/tpys/fuxi-2.1) |
+| DWD ICON Global | Public, distinct physical-model guidance | Issued GRIB archive, intervals and common target grid need integration. | [DWD open files](https://opendata.dwd.de/weather/nwp/icon/grib/) |
+| DWD ICON-EPS Global | Additional ensemble uncertainty family | Shares model lineage with ICON control; members and cycles must be matched. | [DWD ensemble files](https://opendata.dwd.de/weather/nwp/icon-eps/grib/) |
+| ECCC GDPS Hybrid | Operational physics plus AI large-scale guidance | GEM dynamics are nudged toward GEML; GDPS and GEML are dependent, and rainfall is not a direct GEML output. | [ECCC GDPS](https://eccc-msc.github.io/open-data/msc-data/nwp_gdps/readme_gdps_en/) |
+| ECCC GEPS | Canadian global ensemble scenarios | Coarse-grid event guidance requires Indian observation calibration. | [ECCC GEPS](https://eccc-msc.github.io/open-data/msc-data/nwp_geps/readme_geps-datamart_en/) |
 
 ## Appendix B. Data source roles and pitfalls
 
