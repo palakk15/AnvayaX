@@ -1,16 +1,16 @@
 # Validation-driven SIH81 prototype
 
-The public dashboard has eleven primary sections. Existing live search, PIN handling, model atlas, Groq assistant, additive gate and trained spatial-transformer research remain available. `#blend` links to the original neural research laboratory, and `#validation` links to the original distribution-score benchmark.
+The public dashboard has eight primary sections: Overview, Live Forecast, Blended Forecast, Model Comparison, Weight Maps, Extreme Weather, Model Atlas and Data Health. Neural Studio is inside Weight Maps at `#maps/neural`. Validation, Evidence, Historical Skill and Operational Pipeline have no separate public pages. Comparison explanations and evidence-matching receipts are available within Model Comparison.
 
 ## Evidence contracts
 
 | Layer | Implemented behaviour | Current limitation |
 | --- | --- | --- |
-| Live deterministic blend | Temperature and hourly precipitation weighted means; wind component blending; per-target missing-source renormalization | Equal eligible-source weights because no matched real skill archive is connected |
+| Live deterministic blend | Temperature and hourly precipitation weighted means; wind component blending; per-target missing-source renormalization | Six connected sources; adaptive agreement heuristic, not measured historical skill |
 | Historical skill | MAE, RMSE, bias, correlation; threshold contingency metrics; ensemble Brier and reliability bins | Shipped archive contains 3,456 generated pairs at six sites; explicitly simulated |
 | Contextual routing | Historical error, state/district/region, season, lead, forecast regime, recent 7/30/90-day error, disagreement, availability | Transparent experimental log-score router; coefficients fixed, strength selected on validation |
 | Validation | Common source cohort; chronological development selection; three expanding-window test folds; arrival-time and target-window purges | Synthetic test scores do not establish operational India skill; no statistical significance claim |
-| Model maps | Full India boundary including islands, site weights, sampled-state aggregation, exact metric tooltips, variable/lead filters | District points, not district polygons; no inference outside sampled coverage; event-specific routers unavailable |
+| Model maps | Live six-source weights by city, weather variable and exact target hour; all-source heat table; ensemble magnitude/frequency layers; zoom and coverage receipts | Sampled city points, not a nationwide interpolated field; no estimate outside sampled coverage |
 | Extremes | Real NOAA GEFS member exceedance frequency for rain totals, temperature maxima, wind maxima; member distribution and P10/P50/P90 | Raw, uncalibrated; no cyclone tracks, official heatwave diagnosis or IMD warning ingestion |
 | Data health | Missing values, independent provider failures, retrieval expiry, availability and unknown model initialization | Latest-series API cannot establish source-run age; current conditions are model estimates |
 | Operations | Executed request-stage status, client refresh, modular adapters, warehouse schema and validated import/export | Hosted durable persistence and background scheduler planned, not active |
@@ -26,6 +26,16 @@ Issuance groups are split at 35% (initial training end) and 50% (validation end)
 Wind point metrics compare speed after vector blending against observed speed; router skill uses vector RMSE. Correlation is undefined for constant/insufficient series. POD = recall; FAR is false alarms divided by forecast events; CSI excludes correct negatives. Brier uses actual probability inputs only. Deterministic model spread is never turned into event probability. Raw ensemble probabilities require complete target windows and at least 10 usable members. All event thresholds are prototype screening choices, not official declarations.
 
 Latest-series live inputs have no pinned model initialization. The interface distinguishes hours ahead from initialization lead and never uses these series to fabricate fixed-lead historical skill. Rainfall is previous-hour water-equivalent accumulation. GEFS events use complete 24-hour windows, displayed explicitly in IST; the first accumulation interval can already be partly elapsed at retrieval.
+
+## Public comparison and planning maps
+
+Comparison controls select only location, lead and season values present in the selected archive. The evaluation period (`period=all|7|30|90`) filters scored held-out cases relative to the latest target end in that archive. It is separate from the router's recent training lookback. All summary metrics and example cases use the filtered cohort; the coverage receipt shows before/after counts and target dates. A matched-case inspector shows each model's prediction, the identical outcome, absolute error, issuance time and outcome availability. Simulated evidence is labelled throughout.
+
+Local map cutoffs use ERA5 daily reanalysis over 30 days ending seven days before the request date, cached per city and reference date for one day. Rain uses the 75th percentile of wet-day totals (at least 1 mm), requiring at least five wet days and 20 valid daily totals. Temperature and wind use the 90th percentile of daily maxima, requiring at least 20 valid values. Cutoffs are bounded to 10?50 mm, 30?42?C and 8?14 m/s respectively, then rounded to one decimal. Fallbacks are 10 mm, 35?C and 8 m/s, explicitly labelled when reference coverage or units are insufficient. Recent reanalysis is not station truth, a long-term normal or a vulnerability assessment.
+
+Maps offer median amount, member frequency above a cutoff, severe screening and editable city cutoffs. Rain, heat and wind have separate values, units, colours and marker shapes. Exact coverage includes requested coordinates, complete/returned member counts, forecast windows, retrieval times and reference dates/day counts. No-exceedance frequencies read ?None above?; dry or calm values remain numerically unchanged underneath. Equal genuine values are not artificially differentiated. Event probabilities remain from GEFS; six deterministic forecasts are not represented as six probability providers.
+
+Extreme Weather translates the member signals into public planning guidance. A 40?C screen alone does not declare a heat wave; local normals, terrain and persistence checks are absent. Wind is the maximum hourly modeled speed, not a gust forecast. Official IMD and NDMA links are provided. The prototype does not claim demonstrated signal improvement or calibration.
 
 ## Backend boundaries
 
@@ -64,7 +74,7 @@ npm run build
 
 The exporter reuses the existing exact-window join, coordinate checks, model training-cutoff exclusions and actual availability checks. It never converts a hindcast into an operational forecast. Imports are transactional and idempotent; immutable forecast collisions and silent observation revisions are rejected. Keep sensitive station data out of published exports unless its licence allows disclosure: the dashboard exposes paired values.
 
-The hosted function reads the immutable snapshot at cold start. Publish a new snapshot by redeploying. This makes the prototype reproducible, not continuously trained. The live latest-series route deliberately continues its equal-weight fallback until a compatible live issuance/lead mapping and validated promotion policy are connected.
+The hosted function reads the immutable snapshot at cold start. Publish a new snapshot by redeploying. This makes the prototype reproducible, not continuously trained. The live latest-series route deliberately continues its agreement heuristic until a compatible live issuance/lead mapping and validated promotion policy are connected.
 
 ## Scheduling and storage
 
@@ -74,7 +84,7 @@ Current operation is request-driven with a 15-minute forecast cache and visible-
 
 ## Sources and restrictions
 
-- [Open-Meteo forecast API](https://open-meteo.com/en/docs): named GFS, ECMWF IFS and AIFS feeds tested; attribution required, free hosted API for non-commercial use subject to quotas. Output sampling is not the native model grid/time step.
+- [Open-Meteo forecast API](https://open-meteo.com/en/docs): named GFS, ECMWF IFS, AIFS, DWD ICON, ECCC GEM and JMA GSM feeds connected; attribution required, free hosted API for non-commercial use subject to quotas. Output sampling is not the native model grid/time step.
 - [Ensemble API](https://open-meteo.com/en/docs/ensemble-api): GEFS seamless member endpoint tested with 31 members. Raw frequencies are not locally calibrated probabilities. Provider documentation lists native resolutions, forecast ranges and update frequencies.
 - [Historical forecast](https://open-meteo.com/en/docs/historical-forecast-api): continuous stitched products are not a substitute for issue-preserving fixed-lead forecasts. Single-run archives require separate ingestion.
 - [IMD](https://mausam.imd.gov.in/): official warning destination; no authenticated observation/alert feed connected. Do not scrape gated endpoints or imply official endorsement.

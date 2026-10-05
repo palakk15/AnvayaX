@@ -22,7 +22,7 @@ let labReady = false;
 let routeSerial = 0;
 
 async function nav(view) {
-  const allowed = ['overview','public','evidence','atlas',...platformViews];
+  const allowed = ['overview','public','atlas',...platformViews];
   const neural=view==='lab'||view==='maps/neural';
   const name = neural?'maps':allowed.includes(view) ? view : 'overview';
   if(view==='lab')history.replaceState(null,'','#maps/neural');
@@ -47,12 +47,10 @@ async function nav(view) {
       if (serial === routeSerial && !labReady) { chooseLocation(); labReady = true; }
       if (serial === routeSerial) setStatus('lab-message','');
     }
-    if (name === 'evidence') { benchmark = await loadResearch('benchmark'); if (serial === routeSerial) renderEvidence(); }
     if (name === 'atlas') { catalogue = await loadResearch('catalogue'); if (serial === routeSerial) renderAtlas(); }
   } catch(error) {
     if (serial !== routeSerial) return;
     if (neural) setStatus('lab-message',`Research examples unavailable: ${error.message}`,true);
-    if (name === 'evidence') $('evidence-content').textContent=`Evidence unavailable: ${error.message}`;
     if (name === 'atlas') $('model-grid').textContent=`Model profiles unavailable: ${error.message}`;
   }
 }
@@ -225,14 +223,6 @@ const methodDescriptions={
 function methodName(id){if(methodDescriptions[id])return methodDescriptions[id][0];const [kind,source]=id.split(':');return `${({calibrated:'Calibrated',raw_members:'Raw ensemble',raw_mean:'Raw mean'})[kind]||title(kind)} · ${sourceName(source||id)}`;}
 function openMethod(id){const source=id.split(':')[1],entry=methodDescriptions[id];$('model-detail').innerHTML=`<span class="eyebrow">BENCHMARK METHOD · GENERATED RESEARCH DATA</span><h1>${esc(methodName(id))}</h1><p class="method-description">${esc(entry?.[1]||`${id.startsWith('calibrated')?'Calibrated forecast distribution':id.startsWith('raw_members')?'Uncalibrated ensemble members':'Uncalibrated point mean'} for this source, evaluated on the same held-out generated cases.`)}</p>${source?`<p>Source model: ${profileLink(source)}. Open its profile for architecture, uses, limitations and primary references.</p>`:''}<p class="fineprint">Benchmark scores measure errors, not model weights. Lower scores are better only within the displayed test. The training examples are synthetic, and these results do not validate an operational Indian forecast.</p><a class="model-link" href="#maps/neural" id="method-lab-link">Explore weights and exact calculations →</a>`;$('model-dialog').showModal();$('method-lab-link').addEventListener('click',()=>$('model-dialog').close());}
 
-function renderEvidence() {
-  if (!benchmark) return;
-  const variable=$('evidence-variable').value,metric=$('evidence-metric').value;
-  const data=benchmark.variables[variable], methods=Object.entries(data.methods).filter(([,record])=>Number.isFinite(record[metric])).sort((a,b)=>a[1][metric]-b[1][metric]);
-  const best=methods[0]?.[1][metric]||1,max=methods.at(-1)?.[1][metric]||1;
-  const metrics=({proper_score:'Distribution score',mae:'Mean absolute error',rmse:'Root mean square error'});
-  $('evidence-content').innerHTML=`<div class="metric-lead">${stat('Held-out cases',data.split_counts.test,'Chronologically separated generated examples')}${stat('Compared methods',methods.length,'Adaptive gates and statistical baselines')}${stat('Lowest displayed score',num(best,3),'Within this generated benchmark')}</div><article class="card"><span class="eyebrow">COMMON CASE SET</span><h2>${esc(metrics[metric])}</h2><p>All methods below use the same held-out cases. Lower is better; this ranking is specific to the selected generated test and metric.</p>${methods.map(([id,item],i)=>`<div class="method-row"><strong>${i+1}. <button class="model-link" data-method="${esc(id)}">${esc(methodName(id))}</button></strong><b>${num(item[metric],3)}</b><meter aria-label="${esc(title(id))} score" min="0" max="${max*1.05}" value="${item[metric]}"></meter></div>`).join('')}</article><div class="two-columns"><article class="card"><span class="eyebrow">READ THE SCORES</span><h2>Different metrics answer different questions</h2><p>The distribution score assesses a forecast distribution. MAE and RMSE measure point-summary errors. A method can lead one measure and trail another.</p></article><article class="card"><span class="eyebrow">TRACEABLE SPLITS</span><h2>See how cases were separated</h2><p>Training ${data.split_counts.training}, cross-fit ${data.split_counts.cross_fitted}, development ${data.split_counts.development}, held-out test ${data.split_counts.test}. These generated cases do not replace real Indian station and rain-gauge verification.</p></article></div>`;
-}
 function modelFamily(item) { return item.ensemble?'ensemble':item.model_class==='nwp'?'nwp':item.model_class==='ai'?'ai':item.model_class==='statistical'?'statistical':'hybrid'; }
 function atlasMetadata(item) {
   const live=['gfs','ifs_control','aifs_single','icon_global'].includes(item.id),ensemble=item.id==='gefs';
@@ -402,7 +392,6 @@ async function start() {
     $('panel-weights').hidden=labTab!=='weights';$('panel-network').hidden=labTab!=='network';
     document.querySelectorAll('[data-lab-tab]').forEach(tab=>tab.setAttribute('aria-pressed',String(tab===button)));
   }));
-  ['evidence-variable','evidence-metric'].forEach(id=>$(id).addEventListener('change',renderEvidence));
   $('model-search').addEventListener('input',renderAtlas);
   ['model-family','model-variable'].forEach(id=>$(id).addEventListener('change',renderAtlas));
   ['public-variable','public-horizon'].forEach(id=>$(id).addEventListener('change',()=>{

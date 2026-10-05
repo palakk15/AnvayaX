@@ -23,8 +23,8 @@
         <a href="#comparison" data-view="comparison">Model Comparison</a>
         <a href="#maps" data-view="maps">Weight Maps</a>
         <a href="#extreme" data-view="extreme">Extreme Weather</a>
-        <a href="#validation" data-view="validation">Validation</a>
-        <a href="#evidence" data-view="evidence">Evidence</a><a href="#atlas" data-view="atlas">Model atlas</a>
+
+        <a href="#atlas" data-view="atlas">Model atlas</a>
         <a href="#health" data-view="health">Data Health</a>
       </nav>
       <a id="chosen-city" class="city-selection-link" href="#public">Choose your city</a><span class="header-status"><i></i> IST · INDIA</span>
@@ -62,7 +62,7 @@
           </div></div>
       </section>
 
-      <section class="view" id="view-evidence" hidden><div class="page-head"><div><span class="eyebrow">RESEARCH EVIDENCE</span><h1>Compare methods, not slogans</h1><p>Inspect held-out generated cases and compare adaptive routers with statistical baselines. Compare scores, sample sizes and methods in one place.</p></div><span class="scope-pill research">GENERATED BENCHMARK</span></div><div class="input-strip card"><label class="input-field">Forecast target<select id="evidence-variable"><option value="rainfall">Rainfall</option><option value="temperature">Temperature</option><option value="wind_uv">Joint wind</option></select><small>Each target has its own score.</small></label><label class="input-field">Comparison metric<select id="evidence-metric"><option value="proper_score">Distribution score</option><option value="mae">Mean absolute error</option><option value="rmse">Root mean square error</option></select><small>Lower is better for all three.</small></label><div class="input-explainer">Same held-out cases, same metric, multiple methods. These are generated integration cases, separate from the live forecast desk.</div></div><div id="evidence-content"></div></section>
+
 
       <section class="view" id="view-atlas" hidden><div class="page-head"><div><span class="eyebrow">MODEL ATLAS</span><h1>Know when each model belongs</h1><p>Physical, AI and hybrid candidates viewed through four practical questions: region, season, lead time and weather situation.</p></div><span class="count-pill" id="model-count">Profiles loading</span></div><div class="atlas-scope"><span class="scope-pill catalog">DOCUMENTED CANDIDATES</span><p>Catalogue entries describe possible sources. The live desk requests six global models; the research gate uses only the experts it was trained on. No atlas ranking implies measured India skill.</p></div><div class="input-strip card"><label class="input-field">Search<input id="model-search" type="search" placeholder="Name, provider or weather situation"><small>Find a system or use case.</small></label><label class="input-field">Model family<select id="model-family"><option value="all">All families</option><option value="nwp">Physical NWP</option><option value="ai">AI weather</option><option value="hybrid">Hybrid</option><option value="ensemble">Ensemble</option><option value="statistical">Statistical</option></select><small>Focus on an approach.</small></label><label class="input-field">Target variable<select id="model-variable"><option value="all">All targets</option><option value="rainfall">Rainfall</option><option value="temperature">Temperature</option><option value="wind_uv">Wind vector</option></select><small>Only documented native capability passes.</small></label></div><div id="model-grid" class="model-grid"></div></section>
     </main>

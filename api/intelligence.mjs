@@ -7,6 +7,7 @@ export async function GET(request) {
   try {
     const params=new URL(request.url).searchParams,action=params.get('action')||'live';
     if(!['live','skill','ensemble'].includes(action))throw new ServiceError('Unknown intelligence action',400);
+    if(action==='skill'&&!['all','7','30','90'].includes(params.get('period')||'all'))throw new ServiceError('Choose a supported evaluation period.',400);
     if(action==='skill'&&(!['real','research'].includes(params.get('mode')||'real')||!['temperature','rainfall','wind_uv'].includes(params.get('variable')||'temperature')||![7,30,90].includes(Number(params.get('recent')||30))))throw new ServiceError('Invalid evidence filters',400);
     const result=action==='skill'?await skillReport(params):await (action==='ensemble'?getEnsemble:getIntelligence)(await resolveLocation(params));
     return Response.json(result,{headers:{'Cache-Control':'public, s-maxage=300'}});

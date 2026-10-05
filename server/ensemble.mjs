@@ -1,5 +1,6 @@
 import {cached,fetchJSON,ServiceError} from './http.mjs';
 import {quantile,mean} from './science/metrics.mjs';
+import {getPlanningContext} from './planning.mjs';
 export function ensembleGuidance(data,now=Date.now()) {
   const h=data.hourly,times=h?.time;
   if(!Array.isArray(times)||data.utc_offset_seconds!==0||times.some((t,i)=>!/^\d{4}-\d\d-\d\dT\d\d:\d\d$/.test(t)||(i&&Date.parse(t+'Z')-Date.parse(times[i-1]+'Z')!==3600000)))throw new ServiceError('Invalid ensemble time axis');
@@ -22,6 +23,7 @@ export async function getEnsemble(location) {
   return cached(`ensemble:${location.latitude.toFixed(4)}:${location.longitude.toFixed(4)}`,30*60000,async()=>{
     const url=new URL('https://ensemble-api.open-meteo.com/v1/ensemble');
     Object.entries({latitude:location.latitude,longitude:location.longitude,hourly:'temperature_2m,precipitation,wind_speed_10m',models:'gfs_seamless',forecast_hours:48,wind_speed_unit:'ms',timezone:'UTC'}).forEach(([k,v])=>url.searchParams.set(k,v));
-    return {data_kind:'real',location,provider:'NOAA GEFS via Open-Meteo',retrieved_at:new Date().toISOString(),source_url:url.toString(),documentation_url:'https://open-meteo.com/en/docs/ensemble-api',...ensembleGuidance(await fetchJSON(url))};
+    const [forecast,planning]=await Promise.all([fetchJSON(url),getPlanningContext(location)]);
+    return {data_kind:'real',location,planning,provider:'NOAA GEFS via Open-Meteo',retrieved_at:new Date().toISOString(),source_url:url.toString(),documentation_url:'https://open-meteo.com/en/docs/ensemble-api',...ensembleGuidance(forecast)};
   });
 }
