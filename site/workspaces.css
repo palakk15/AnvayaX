@@ -28,3 +28,23 @@ body{--workspace-accent:#117b7b}main>.view{max-width:1480px;margin-inline:auto}.
 @media(max-width:1100px){.guidance-cards{grid-template-columns:1fr}.guidance-card h2,.guidance-action{min-height:0}.comparison-scorecard{grid-template-columns:1fr}.risk-map-grid{grid-template-columns:1fr}.readable-map{height:580px}.comparison-bar{grid-template-columns:1fr 1fr}.comparison-bar b{grid-column:2}.map-inspector{max-width:100%}}@media(max-width:600px){#risk-map-panel,.guidance-card,.comparison-guide{padding:16px}.readable-map{height:460px}.comparison-controls{padding:12px}.comparison-bar{grid-template-columns:1fr}.comparison-bar b{grid-column:1}.weight-source-row{grid-template-columns:100px 1fr 70px}}
 
 .comparison-intro .eyebrow,.guidance-intro .eyebrow{color:#8bdfd3}
+
+/* The map is a set of retrieved coordinate samples, never a continuous skill field. */
+.readable-map{cursor:grab;touch-action:none;user-select:none}
+.readable-map:active{cursor:grabbing}
+.readable-map [data-point]{cursor:pointer}
+.readable-map .sample-halo{pointer-events:none;animation:sample-breathe 4s ease-in-out infinite}
+.readable-map [data-point]:nth-of-type(3n) .sample-halo{animation-delay:-1.4s}
+.map-zoom{align-items:center}
+.map-zoom span{font-size:11px;color:#66817c;margin-left:auto}
+@keyframes sample-breathe{50%{opacity:.62;transform:scale(1.12);transform-box:fill-box;transform-origin:center}}
+.lab-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 22px}
+.lab-steps>div{display:flex;align-items:center;gap:13px;padding:15px 17px;background:#eff3fb;border:1px solid #d7dded;border-radius:12px}
+.lab-steps b{display:grid;place-items:center;flex:none;width:33px;height:33px;border-radius:50%;background:#6159a8;color:white}
+.lab-steps strong,.lab-steps small{display:block}.lab-steps strong{color:#303d65;font-size:13px}.lab-steps small{color:#64738f;font-size:11px;line-height:1.45}
+#panel-network .card{background:radial-gradient(circle at 70% 10%,#ebe8ff,#f8faff 55%)}
+#network-svg{width:100%;height:auto;background:linear-gradient(120deg,#f2efff,#eaf8f6);border-radius:14px}
+#network-svg>path{stroke-dasharray:8 6;animation:network-flow 2s linear infinite}
+@keyframes network-flow{to{stroke-dashoffset:-28}}
+@media(max-width:700px){.lab-steps{grid-template-columns:1fr}.map-zoom span{width:100%;margin-left:0}}
+@media(prefers-reduced-motion:reduce){.readable-map .sample-halo,#network-svg>path{animation:none}}

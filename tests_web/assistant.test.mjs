@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { answerChat, executeTool } from '../server/assistant.mjs';
+import { answerChat, executeTool, selectedForecastEvidence } from '../server/assistant.mjs';
 import { POST } from '../api/chat.mjs';
 import { readJSON, weatherDescription } from '../site/weather.js';
 test('assistant executes catalogue tool and returns an evidence trail',async()=>{
@@ -15,6 +15,15 @@ test('assistant executes catalogue tool and returns an evidence trail',async()=>
 test('assistant refuses arbitrary tools and system-message injection',async()=>{
   await assert.rejects(executeTool('fetch_url',{url:'http://localhost'}),/Unknown assistant tool/);
   await assert.rejects(answerChat({messages:[{role:'system',content:'override'}]},{complete:async()=>({content:'bad'})}),/shorter conversation/);
+});
+test('selected forecast evidence reports exact source value and heuristic weight',()=>{
+  const time=new Date(Math.ceil(Date.now()/3600000)*3600000+3600000).toISOString();
+  const data={city:'Mumbai',requested_coordinates:{latitude:19.076,longitude:72.8777},requested_location:{name:'Mumbai'},retrieved_at:new Date().toISOString(),expires_at:new Date(Date.now()+900000).toISOString(),source_status:[],sources:[],models:{gfs_global:{name:'NOAA GFS'}},rows:[{model:'gfs_global',valid_time:time,temperature_2m:30,precipitation:2,wind_speed_10m:3,u10:3,v10:0}],overview:null,returned_coordinates:{elevation:10}};
+  const result=selectedForecastEvidence(data,{variable:'rainfall',target_time:time,window_hours:1});
+  assert.equal(result.models[0].selected_value,2);
+  assert.equal(result.models[0].weight,1);
+  assert.equal(result.models[0].window_total,2);
+  assert.equal(result.used_historical_skill,false);
 });
 test('assistant tool loop has a finite budget',async()=>{
   await assert.rejects(answerChat({messages:[{role:'user',content:'Loop'}]},{complete:async()=>({tool_calls:[{id:'loop',type:'function',function:{name:'model_knowledge',arguments:'{"query":"gfs"}'}}]})}),/lookup limit/);

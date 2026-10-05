@@ -1,7 +1,7 @@
 import { answerChat, groqKey } from '../server/assistant.mjs';
 import { errorResponse, ServiceError } from '../server/http.mjs';
 const usage = new Map();
-export async function GET() { return Response.json({configured:Boolean(groqKey()),model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',capabilities:['Place and PIN search','Live forecast comparison','35-model atlas explanations']},{headers:{'Cache-Control':'no-store'}}); }
+export async function GET() { return Response.json({configured:Boolean(groqKey()),model:process.env.GROQ_MODEL||'openai/gpt-oss-120b',capabilities:['Place and PIN search','Selected live forecast explanation','Live model comparison','35-model atlas explanations']},{headers:{'Cache-Control':'no-store'}}); }
 export async function POST(request) {
   try {
     const origin=request.headers.get('origin');

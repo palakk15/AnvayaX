@@ -307,8 +307,8 @@ function renderPublic(data) {
   $('download-forecast').disabled=false;
   $('refresh-status').textContent=`Auto-refresh: 15 min · retrieved ${formatIST(data.retrieved_at)}`;
   $('source-health').innerHTML=(data.source_status||[]).map(source=>`<span class="source-badge ${source.available?'':'unavailable'}">${source.available?'●':'○'} ${esc(source.name)} · ${source.available?'available':'temporarily unavailable'}</span>`).join('');
-  window.anvayaContext={view:'live forecasts',selection:liveSelection.label,parameters:liveSelection.parameter,coordinates:data.requested_coordinates,location_note:liveSelection.note||'',variable,horizon};
   const ids = Object.keys(data.models), times = futureTargetTimes(data.rows,Date.now(),horizon);
+  window.anvayaContext={view:'live forecasts',selection:liveSelection.label,parameters:liveSelection.parameter,coordinates:data.requested_coordinates,location_note:liveSelection.note||'',variable,horizon,target_time:times[0]||null};
   const windows = ids.map(id=>modelWindow(data.rows,id,variable,times));
   const all = windows.flatMap(window=>window.points.map(point=>point.value)).filter(Number.isFinite);
   if (!times.length || !all.length) {
